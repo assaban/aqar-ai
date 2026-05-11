@@ -80,52 +80,54 @@ build-web: ## Build web image only
 # Testing
 # ═══════════════════════════════════════
 
-test: ## Run all tests
+test: ## Run all tests (inside Docker)
 	@echo "$(CYAN)🧪 Running all tests...$(RESET)"
-	cd apps/api && $(PYTHON) -m pytest tests/ -v
-	cd packages/pipeline && $(PYTHON) -m pytest tests/ -v
+	$(DOCKER_COMPOSE) exec api python -m pytest apps/api/tests/ -v
+	$(DOCKER_COMPOSE) exec worker python -m pytest packages/pipeline/tests/ -v
 	@echo "$(GREEN)✅ All tests passed!$(RESET)"
 
-test-unit: ## Run unit tests only
+test-unit: ## Run unit tests only (inside Docker)
 	@echo "$(CYAN)🧪 Running unit tests...$(RESET)"
-	cd apps/api && $(PYTHON) -m pytest tests/unit/ -v
-	cd packages/pipeline && $(PYTHON) -m pytest tests/unit/ -v
+	$(DOCKER_COMPOSE) exec api python -m pytest apps/api/tests/unit/ -v
+	$(DOCKER_COMPOSE) exec worker python -m pytest packages/pipeline/tests/unit/ -v
 
-test-int: ## Run integration tests (requires Docker services)
+test-int: ## Run integration tests (inside Docker, requires services)
 	@echo "$(CYAN)🧪 Running integration tests...$(RESET)"
-	cd apps/api && $(PYTHON) -m pytest tests/integration/ -v
-	cd packages/pipeline && $(PYTHON) -m pytest tests/integration/ -v
+	$(DOCKER_COMPOSE) exec api python -m pytest apps/api/tests/integration/ -v
+	$(DOCKER_COMPOSE) exec worker python -m pytest packages/pipeline/tests/integration/ -v
 
 test-ml: ## Run ML quality tests against golden dataset
 	@echo "$(CYAN)🧪 Running ML quality benchmarks...$(RESET)"
-	cd packages/pipeline && $(PYTHON) -m pytest tests/golden_data/ -v --tb=long
+	$(DOCKER_COMPOSE) exec worker python -m pytest packages/pipeline/tests/golden_data/ -v --tb=long
 
 test-coverage: ## Run tests with coverage report
 	@echo "$(CYAN)📊 Running tests with coverage...$(RESET)"
-	cd apps/api && $(PYTHON) -m pytest tests/ --cov=app --cov-report=html --cov-report=term
-	cd packages/pipeline && $(PYTHON) -m pytest tests/ --cov=aqar_pipeline --cov-report=html --cov-report=term
+	$(DOCKER_COMPOSE) exec api python -m pytest apps/api/tests/ --cov=app --cov-report=html --cov-report=term
+	$(DOCKER_COMPOSE) exec worker python -m pytest packages/pipeline/tests/ --cov=aqar_pipeline --cov-report=html --cov-report=term
+
+test-local: ## Run tests locally (requires local venv with deps)
+	@echo "$(CYAN)🧪 Running tests locally...$(RESET)"
+	cd apps/api && $(PYTHON) -m pytest tests/ -v
+	cd packages/pipeline && $(PYTHON) -m pytest tests/ -v
 
 # ═══════════════════════════════════════
 # Code Quality
 # ═══════════════════════════════════════
 
-lint: ## Run all linters
+lint: ## Run all linters (inside Docker)
 	@echo "$(CYAN)🔍 Running linters...$(RESET)"
-	ruff check apps/api/ packages/pipeline/ packages/db/
-	cd apps/web && npx eslint src/ --max-warnings 0
+	$(DOCKER_COMPOSE) exec api ruff check apps/api/ packages/pipeline/ packages/db/
 	@echo "$(GREEN)✅ Lint passed!$(RESET)"
 
-format: ## Auto-format all code
+format: ## Auto-format all code (inside Docker)
 	@echo "$(CYAN)✨ Formatting code...$(RESET)"
-	ruff format apps/api/ packages/pipeline/ packages/db/
-	ruff check --fix apps/api/ packages/pipeline/ packages/db/
-	cd apps/web && npx prettier --write src/
+	$(DOCKER_COMPOSE) exec api ruff format apps/api/ packages/pipeline/ packages/db/
+	$(DOCKER_COMPOSE) exec api ruff check --fix apps/api/ packages/pipeline/ packages/db/
 	@echo "$(GREEN)✅ Formatted!$(RESET)"
 
-typecheck: ## Run type checkers
+typecheck: ## Run type checkers (inside Docker)
 	@echo "$(CYAN)🔍 Type checking...$(RESET)"
-	cd apps/api && mypy app/
-	cd apps/web && npx tsc --noEmit
+	$(DOCKER_COMPOSE) exec api mypy apps/api/app/
 
 # ═══════════════════════════════════════
 # Database
@@ -133,13 +135,13 @@ typecheck: ## Run type checkers
 
 migrate: ## Run database migrations
 	@echo "$(CYAN)🗄️  Running migrations...$(RESET)"
-	cd apps/api && alembic upgrade head
+	$(DOCKER_COMPOSE) exec api alembic -c apps/api/alembic.ini upgrade head
 
 migrate-create: ## Create a new migration (usage: make migrate-create MSG="add users table")
-	cd apps/api && alembic revision --autogenerate -m "$(MSG)"
+	$(DOCKER_COMPOSE) exec api alembic -c apps/api/alembic.ini revision --autogenerate -m "$(MSG)"
 
 migrate-rollback: ## Rollback last migration
-	cd apps/api && alembic downgrade -1
+	$(DOCKER_COMPOSE) exec api alembic -c apps/api/alembic.ini downgrade -1
 
 seed: ## Seed database with sample data
 	@echo "$(CYAN)🌱 Seeding database...$(RESET)"

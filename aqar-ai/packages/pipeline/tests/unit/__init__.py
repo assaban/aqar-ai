@@ -1,1 +1,0 @@
-"""Aqar.ai module."""

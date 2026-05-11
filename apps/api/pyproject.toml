@@ -19,6 +19,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "aqar-db",
     "aqar-pipeline",
+    "psycopg2-binary>=2.9",
 ]
 
 [project.optional-dependencies]
