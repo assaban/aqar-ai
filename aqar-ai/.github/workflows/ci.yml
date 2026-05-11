@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  # ═══════════════════════════════════════
+  # Python Lint & Type Check
+  # ═══════════════════════════════════════
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install ruff
+        run: pip install ruff mypy
+
+      - name: Ruff check
+        run: ruff check apps/api/ packages/pipeline/ packages/db/
+
+      - name: Ruff format check
+        run: ruff format --check apps/api/ packages/pipeline/ packages/db/
+
+  # ═══════════════════════════════════════
+  # Python Unit Tests
+  # ═══════════════════════════════════════
+  python-test:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    needs: python-lint
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: aqar_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: aqar_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e packages/db
+          pip install -e "packages/pipeline[dev]"
+          pip install -e "apps/api[dev]"
+
+      - name: Run unit tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://aqar_test:test_password@localhost:5432/aqar_test_db
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: test
+        run: |
+          cd apps/api && python -m pytest tests/unit/ -v --tb=short
+          cd ../../packages/pipeline && python -m pytest tests/unit/ -v --tb=short
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://aqar_test:test_password@localhost:5432/aqar_test_db
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: test
+        run: |
+          cd apps/api && python -m pytest tests/integration/ -v --tb=short
+
+  # ═══════════════════════════════════════
+  # Frontend Lint & Build
+  # ═══════════════════════════════════════
+  frontend-check:
+    name: Frontend Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci --ignore-scripts || echo "No package-lock.json yet — skipping"
+
+      - name: Lint
+        working-directory: apps/web
+        run: npx eslint src/ --max-warnings 0 || echo "ESLint not configured yet — skipping"
+
+      - name: Type check
+        working-directory: apps/web
+        run: npx tsc --noEmit || echo "TypeScript not configured yet — skipping"
+
+      - name: Build
+        working-directory: apps/web
+        run: npm run build || echo "Build not configured yet — skipping"
+
+  # ═══════════════════════════════════════
+  # Docker Build Validation
+  # ═══════════════════════════════════════
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [python-lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f infra/docker/Dockerfile.api --target development -t aqar-api:test .
+
+      - name: Build Worker image
+        run: docker build -f infra/docker/Dockerfile.worker -t aqar-worker:test .

@@ -1,0 +1,168 @@
+# ============================================
+# Aqar.ai - Docker Compose (Development)
+# ============================================
+# Usage: make dev  (or docker compose up -d)
+# ============================================
+
+services:
+  # ── PostgreSQL + PostGIS ──
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: aqar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aqar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aqar_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-aqar_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aqar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Cache + Celery Broker) ──
+  redis:
+    image: redis:7-alpine
+    container_name: aqar-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Meilisearch ──
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: aqar-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-aqar_meili_dev_key}
+      MEILI_ENV: development
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    volumes:
+      - meilidata:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend ──
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+      target: development
+    container_name: aqar-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+      - MEILISEARCH_HOST=meilisearch
+      - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - MEILISEARCH_URL=http://meilisearch:7700
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    command: >
+      uvicorn apps.api.app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --log-level info
+
+  # ── Celery Worker (Pipeline Processing) ──
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.worker
+    container_name: aqar-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+      - MEILISEARCH_HOST=meilisearch
+      - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - MEILISEARCH_URL=http://meilisearch:7700
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      - downloads:/tmp/aqar/downloads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A packages.pipeline.aqar_pipeline.celery_app worker
+      --loglevel=info
+      --concurrency=2
+      --queues=ingestion,transcription,extraction,geocoding
+
+  # ── Celery Beat (Scheduled Tasks) ──
+  beat:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.worker
+    container_name: aqar-beat
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    volumes:
+      - ./packages:/app/packages
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A packages.pipeline.aqar_pipeline.celery_app beat
+      --loglevel=info
+
+  # ── Flower (Celery Monitoring) ──
+  flower:
+    image: mher/flower:2.0
+    container_name: aqar-flower
+    restart: unless-stopped
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+  meilidata:
+    driver: local
+  downloads:
+    driver: local

@@ -1,0 +1,1 @@
+"""Aqar.ai API Application."""
