@@ -21,7 +21,7 @@
 
 ## 🎯 What is Aqar.ai?
 
-In Morocco's Tangier-Tetouan region, real estate commerce lives on social media. Independent agents post raw video tours on YouTube where critical property data — price, area, legal status, location — is locked within spoken **Arabic/Darija** dialogue.
+In Morocco's Tangier-Tetouan region, real estate commerce lives on social media. Independent agents post raw video tours on YouTube where critical property data, price, area, legal status, location, is locked within spoken **Arabic/Darija** dialogue.
 
 **Aqar.ai** is an end-to-end AI pipeline that:
 
@@ -163,7 +163,7 @@ make test-ml
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License: see [LICENSE](LICENSE) for details.
 
 ---
 
