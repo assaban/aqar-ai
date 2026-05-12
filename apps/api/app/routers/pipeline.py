@@ -5,7 +5,6 @@ Submit videos for processing and check pipeline status.
 """
 
 import uuid
-from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.app.core.database import get_db
 from apps.api.app.schemas import PipelineStatusResponse, PipelineSubmitRequest
-from packages.db.models import Platform, ProcessingJob, ProcessingStatus, VideoSource
+from models.base import ProcessingJob, ProcessingStatus, VideoSource, Platform
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -22,17 +21,19 @@ router = APIRouter()
 
 @router.post("/pipeline/submit", response_model=PipelineStatusResponse)
 async def submit_video(
-    request: PipelineSubmitRequest,
-    db: Annotated[AsyncSession, Depends(get_db)],
+        request: PipelineSubmitRequest,
+        db: AsyncSession = Depends(get_db),
 ):
     """
     Submit a video URL for processing through the AI pipeline.
-    The pipeline will: ingest → transcribe → extract → geocode.
+    The pipeline will: ingest -> transcribe -> extract -> geocode.
     """
     url = request.url.strip()
 
     # Check for duplicates
-    existing = await db.execute(select(VideoSource).where(VideoSource.url == url))
+    existing = await db.execute(
+        select(VideoSource).where(VideoSource.url == url)
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=409,
@@ -67,9 +68,11 @@ async def submit_video(
 
     logger.info("Video submitted for processing", video_id=str(video.id), url=url)
 
-    # TODO: Dispatch Celery task
-    # from packages.pipeline.aqar_pipeline.stages.ingestion import ingest_video
-    # ingest_video.delay(str(video.id))
+    # Dispatch Celery ingestion task with the JOB ID
+    from aqar_pipeline.stages.ingestion import ingest_video
+
+    # We pass str(job.id) so the worker knows exactly which record to update
+    ingest_video.delay(url, job_id=str(job.id))
 
     return PipelineStatusResponse(
         job_id=job.id,
@@ -81,11 +84,14 @@ async def submit_video(
 
 @router.get("/pipeline/status/{job_id}", response_model=PipelineStatusResponse)
 async def get_pipeline_status(
-    job_id: uuid.UUID,
-    db: Annotated[AsyncSession, Depends(get_db)],
+        job_id: uuid.UUID,
+        db: AsyncSession = Depends(get_db),
 ):
     """Check the processing status of a submitted video."""
-    query = select(ProcessingJob).where(ProcessingJob.id == job_id)
+    query = (
+        select(ProcessingJob)
+        .where(ProcessingJob.id == job_id)
+    )
     result = await db.execute(query)
     job = result.scalar_one_or_none()
 
@@ -93,7 +99,9 @@ async def get_pipeline_status(
         raise HTTPException(status_code=404, detail="Processing job not found")
 
     # Get the video URL
-    video = await db.execute(select(VideoSource).where(VideoSource.id == job.video_source_id))
+    video = await db.execute(
+        select(VideoSource).where(VideoSource.id == job.video_source_id)
+    )
     video_source = video.scalar_one()
 
     return PipelineStatusResponse(
@@ -123,3 +131,18 @@ def _extract_youtube_id(url: str) -> str:
         if match:
             return match.group(1)
     return url  # Fallback: use full URL as ID
+
+
+# apps/api/app/routers/pipeline.py
+@router.get("/pipeline/jobs", response_model=list[PipelineStatusResponse])
+async def list_all_jobs(
+        limit: int = 10,
+        db: AsyncSession = Depends(get_db),
+):
+    """Retrieve the most recent processing jobs."""
+    result = await db.execute(
+        select(ProcessingJob).order_by(ProcessingJob.created_at.desc()).limit(limit)
+    )
+    jobs = result.scalars().all()
+    # You would then map these to your response schema
+    return jobs

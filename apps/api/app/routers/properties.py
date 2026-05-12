@@ -5,7 +5,6 @@ CRUD and search endpoints for real estate properties.
 """
 
 import uuid
-from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -17,17 +16,17 @@ from apps.api.app.core.database import get_db
 from apps.api.app.schemas import (
     PropertyListResponse,
     PropertyResponse,
+    PropertySearchQuery,
     StatsResponse,
 )
-from packages.db.models import Location, ProcessingJob, ProcessingStatus, Property, VideoSource
+from models.base import Property, Location, ProcessingJob, ProcessingStatus, VideoSource
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 
 @router.get("/properties", response_model=PropertyListResponse)
-async def list_properties(  # Move the dependency to the start to satisfy Python syntax and B008
-    db: Annotated[AsyncSession, Depends(get_db)],
+async def list_properties(
     q: str | None = None,
     property_type: str | None = None,
     listing_type: str | None = None,
@@ -41,6 +40,7 @@ async def list_properties(  # Move the dependency to the start to satisfy Python
     per_page: int = Query(20, ge=1, le=100),
     sort_by: str = "created_at",
     sort_order: str = "desc",
+    db: AsyncSession = Depends(get_db),
 ):
     """
     List and filter properties.
@@ -48,7 +48,9 @@ async def list_properties(  # Move the dependency to the start to satisfy Python
     """
     # Build query
     query = (
-        select(Property).options(joinedload(Property.location)).where(Property.is_published == True)  # noqa: E712
+        select(Property)
+        .options(joinedload(Property.location))
+        .where(Property.is_published == True)  # noqa: E712
     )
 
     # Apply filters
@@ -102,11 +104,13 @@ async def list_properties(  # Move the dependency to the start to satisfy Python
 @router.get("/properties/{property_id}", response_model=PropertyResponse)
 async def get_property(
     property_id: uuid.UUID,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a single property by ID with full details."""
     query = (
-        select(Property).options(joinedload(Property.location)).where(Property.id == property_id)
+        select(Property)
+        .options(joinedload(Property.location))
+        .where(Property.id == property_id)
     )
     result = await db.execute(query)
     property = result.unique().scalar_one_or_none()
@@ -118,7 +122,7 @@ async def get_property(
 
 
 @router.get("/stats", response_model=StatsResponse)
-async def get_stats(db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_stats(db: AsyncSession = Depends(get_db)):
     """Get system-wide statistics."""
     videos = await db.execute(select(func.count(VideoSource.id)))
     properties = await db.execute(select(func.count(Property.id)))
@@ -126,10 +130,14 @@ async def get_stats(db: Annotated[AsyncSession, Depends(get_db)]):
         select(func.count(Property.id)).where(Property.is_published == True)  # noqa: E712
     )
     pending = await db.execute(
-        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.PENDING)
+        select(func.count(ProcessingJob.id)).where(
+            ProcessingJob.status == ProcessingStatus.PENDING
+        )
     )
     failed = await db.execute(
-        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.FAILED)
+        select(func.count(ProcessingJob.id)).where(
+            ProcessingJob.status == ProcessingStatus.FAILED
+        )
     )
     avg_conf = await db.execute(
         select(func.avg(Property.extraction_confidence)).where(

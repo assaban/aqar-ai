@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-from datetime import UTC, datetime
 
 from celery import shared_task
 from sqlalchemy import create_engine, select
@@ -47,9 +46,9 @@ def extract_audio(self, video_source_id: str):
     """
     Download audio from a YouTube video and convert to WAV.
 
-    This task is triggered after a video is discovered or submitted.
-    It downloads the audio stream, converts it to 16kHz mono WAV
-    (optimal for Whisper), and updates the processing job status.
+    This task is triggered after ingestion completes. It downloads
+    the audio stream, converts it to 16kHz mono WAV (optimal for
+    Whisper), and updates the processing job via JobManager.
 
     Args:
         video_source_id: UUID string of the VideoSource record.
@@ -62,10 +61,10 @@ def extract_audio(self, video_source_id: str):
         get_audio_path,
         validate_wav_file,
     )
+    from aqar_pipeline.utils.job_manager import JobManager
     from aqar_pipeline.utils.youtube import download_audio
 
     logger.info(f"Starting audio extraction for video: {video_source_id}")
-    start_time = time.time()
 
     session = _get_sync_session()
 
@@ -79,20 +78,9 @@ def extract_audio(self, video_source_id: str):
             logger.error(f"VideoSource not found: {video_source_id}")
             return {"status": "error", "message": "Video not found"}
 
-        # Load the processing job
-        job = session.execute(
-            select(ProcessingJob).where(ProcessingJob.video_source_id == video.id)
-        ).scalar_one_or_none()
-
-        if not job:
-            logger.error(f"ProcessingJob not found for video: {video_source_id}")
-            return {"status": "error", "message": "Processing job not found"}
-
-        # Update status to INGESTING
-        job.status = ProcessingStatus.INGESTING
-        job.current_stage = "audio_extraction"
-        job.started_at = job.started_at or datetime.now(UTC)
-        session.commit()
+        # Initialize JobManager
+        manager = JobManager(session, video_source_id)
+        manager.start_stage("audio_extraction")
 
         # Prepare download directory
         ensure_download_dir()
@@ -103,7 +91,10 @@ def extract_audio(self, video_source_id: str):
             audio_info = validate_wav_file(audio_path)
             if audio_info and audio_info.duration_seconds > 0:
                 logger.info(f"Audio already exists, skipping download: {audio_path}")
-                _update_job_success(session, job, start_time)
+                manager.complete_stage(metadata={
+                    "cached": True,
+                    "duration_seconds": audio_info.duration_seconds,
+                })
                 return {
                     "status": "completed",
                     "audio_path": audio_path,
@@ -120,9 +111,7 @@ def extract_audio(self, video_source_id: str):
         )
 
         if not success:
-            _update_job_failure(
-                session,
-                job,
+            manager.fail(
                 stage="audio_extraction",
                 message=f"Failed to download audio from {video.url}",
             )
@@ -133,9 +122,7 @@ def extract_audio(self, video_source_id: str):
         # Validate the downloaded file
         audio_info = validate_wav_file(audio_path)
         if not audio_info:
-            _update_job_failure(
-                session,
-                job,
+            manager.fail(
                 stage="audio_extraction",
                 message=f"Downloaded file is not a valid WAV: {audio_path}",
             )
@@ -143,16 +130,23 @@ def extract_audio(self, video_source_id: str):
                 exc=RuntimeError(f"Invalid WAV file: {audio_path}"),
             )
 
-        # Update job status to ready for transcription
-        _update_job_success(session, job, start_time)
+        # Complete the stage
+        manager.complete_stage(metadata={
+            "duration_seconds": audio_info.duration_seconds,
+            "file_size_mb": round(audio_info.file_size_bytes / (1024 * 1024), 2),
+            "sample_rate": audio_info.sample_rate,
+            "channels": audio_info.channels,
+        })
 
-        elapsed = time.time() - start_time
         logger.info(
             f"Audio extraction complete: {audio_path} "
             f"(duration={audio_info.duration_seconds}s, "
-            f"size={audio_info.file_size_bytes / (1024 * 1024):.1f}MB, "
-            f"elapsed={elapsed:.1f}s)"
+            f"size={audio_info.file_size_bytes / (1024 * 1024):.1f}MB)"
         )
+
+        # TODO [Sprint 3]: Chain to transcription stage
+        # from aqar_pipeline.stages.transcription import transcribe_audio
+        # transcribe_audio.delay(video_source_id, audio_path)
 
         return {
             "status": "completed",
@@ -162,23 +156,24 @@ def extract_audio(self, video_source_id: str):
             "file_size_mb": round(audio_info.file_size_bytes / (1024 * 1024), 2),
             "sample_rate": audio_info.sample_rate,
             "channels": audio_info.channels,
-            "elapsed_seconds": round(elapsed, 2),
         }
 
     except self.MaxRetriesExceededError:
         logger.error(f"Max retries exceeded for video: {video_source_id}")
-        _update_job_failure(
-            session,
-            job,
-            stage="audio_extraction",
-            message="Max retries exceeded for audio extraction",
-        )
+        try:
+            manager = JobManager(session, video_source_id)
+            manager.fail(
+                stage="audio_extraction",
+                message="Max retries exceeded for audio extraction",
+            )
+        except Exception:
+            pass
         return {"status": "failed", "message": "Max retries exceeded"}
 
     except Exception as e:
         session.rollback()
         logger.error(f"Unexpected error in audio extraction: {e}")
-        raise self.retry(exc=e) from e  # Added 'from e'
+        raise self.retry(exc=e)
 
     finally:
         session.close()
@@ -210,32 +205,3 @@ def cleanup_audio(video_external_id: str, download_dir: str | None = None):
         "status": "cleaned" if success else "failed",
         "path": audio_path,
     }
-
-
-def _update_job_success(session: Session, job: ProcessingJob, start_time: float):
-    """Update job status after successful audio extraction."""
-    elapsed = time.time() - start_time
-    job.status = ProcessingStatus.TRANSCRIBING
-    job.current_stage = "transcription"
-
-    # Update stage timings
-    timings = job.stage_timings or {}
-    timings["audio_extraction"] = round(elapsed, 2)
-    job.stage_timings = timings
-
-    session.commit()
-
-
-def _update_job_failure(
-    session: Session,
-    job: ProcessingJob,
-    stage: str,
-    message: str,
-    traceback_str: str | None = None,
-):
-    """Update job status after a failure."""
-    job.status = ProcessingStatus.FAILED
-    job.error_stage = stage
-    job.error_message = message
-    job.error_traceback = traceback_str
-    session.commit()

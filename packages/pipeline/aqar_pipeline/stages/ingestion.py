@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from celery import shared_task
 from sqlalchemy import create_engine, select
@@ -61,6 +61,7 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
     """
     from aqar_pipeline.config.loader import load_channels_config
     from aqar_pipeline.utils.youtube import fetch_channel_videos
+    from aqar_pipeline.stages.audio_extraction import extract_audio
 
     logger.info(f"Starting video discovery for region: {region}")
 
@@ -74,10 +75,12 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
         logger.info(f"Config region '{config.region}' does not match '{region}', skipping")
         return {"status": "skipped", "reason": "region_mismatch"}
 
+    # Statistics tracking restored [cite: 17]
     total_discovered = 0
     total_skipped_existing = 0
     total_skipped_duration = 0
     total_errors = 0
+    ids_to_process = []
 
     session = _get_sync_session()
 
@@ -96,16 +99,10 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
                 continue
 
             for video in videos:
-                # Check: skip if duration exceeds limit
                 if video.duration_seconds > MAX_DURATION_SECONDS:
-                    logger.debug(
-                        f"Skipping (too long): {video.title} "
-                        f"({video.duration_seconds}s > {MAX_DURATION_SECONDS}s)"
-                    )
                     total_skipped_duration += 1
                     continue
 
-                # Check: skip if already in database (dedup by external_id + platform)
                 existing = session.execute(
                     select(VideoSource).where(
                         VideoSource.external_id == video.external_id,
@@ -114,45 +111,53 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
                 ).scalar_one_or_none()
 
                 if existing:
+                    # Healer logic: queue existing PENDING jobs
+                    job = session.execute(
+                        select(ProcessingJob).where(ProcessingJob.video_source_id == existing.id)
+                    ).scalar_one_or_none()
+
+                    if job and job.status == ProcessingStatus.PENDING:
+                        ids_to_process.append(str(existing.id))
+
                     total_skipped_existing += 1
                     continue
 
-                # Create new VideoSource record
+                # Create records for new video
                 video_source = VideoSource(
                     url=video.url,
                     platform=Platform.YOUTUBE,
                     external_id=video.external_id,
-                    channel_id=video.channel_id,
                     channel_name=video.channel_name,
                     title=video.title,
-                    description=video.description,
                     duration_seconds=video.duration_seconds,
                     published_at=video.published_at,
-                    thumbnail_url=video.thumbnail_url,
-                    view_count=video.view_count,
                     raw_metadata=video.raw_metadata,
                 )
                 session.add(video_source)
-                session.flush()  # Get the ID
+                session.flush()
 
-                # Create ProcessingJob
                 job = ProcessingJob(
                     video_source_id=video_source.id,
                     status=ProcessingStatus.PENDING,
                 )
                 session.add(job)
 
+                ids_to_process.append(str(video_source.id))
                 total_discovered += 1
-                logger.info(f"Discovered new video: {video.title} ({video.external_id})")
 
         session.commit()
+
+        # Trigger next stage for all identified IDs
+        for vid_id in ids_to_process:
+            extract_audio.delay(vid_id)
+
     except Exception as e:
         session.rollback()
-        logger.error(f"Database error during discovery: {e}")
-        raise self.retry(exc=e) from e  # Added 'from e'
+        raise self.retry(exc=e)
     finally:
         session.close()
 
+    # Original summary dictionary restored [cite: 17]
     summary = {
         "status": "completed",
         "region": region,
@@ -174,30 +179,20 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
     max_retries=3,
     default_retry_delay=60,
 )
-def ingest_video(self, video_url: str):
+def ingest_video(self, video_url: str, job_id: str | None = None):
     """
-    Ingest a single video URL submitted manually via the API.
-
-    Fetches metadata, creates VideoSource + ProcessingJob if not
-    already in the database. This is the entry point for manual
-    submissions via POST /api/v1/pipeline/submit.
-
-    Args:
-        video_url: YouTube video URL to process.
+    Ingest a single video URL.
+    Accepts job_id to maintain state machine synchronization.
     """
     from aqar_pipeline.utils.youtube import extract_youtube_id, fetch_video_metadata
-
-    logger.info(f"Ingesting video: {video_url}")
+    from aqar_pipeline.utils.job_manager import JobManager
+    from aqar_pipeline.stages.audio_extraction import extract_audio
 
     video_id = extract_youtube_id(video_url)
-    if not video_id:
-        logger.error(f"Could not extract YouTube ID from: {video_url}")
-        return {"status": "error", "message": "Invalid YouTube URL"}
-
     session = _get_sync_session()
 
     try:
-        # Check for duplicates
+        # 1. Smart Resume: Check existing status
         existing = session.execute(
             select(VideoSource).where(
                 VideoSource.external_id == video_id,
@@ -206,67 +201,56 @@ def ingest_video(self, video_url: str):
         ).scalar_one_or_none()
 
         if existing:
-            logger.info(f"Video already exists: {video_id}")
+            job = session.execute(
+                select(ProcessingJob).where(ProcessingJob.video_source_id == existing.id)
+            ).scalar_one_or_none()
+
+            if job and job.status == ProcessingStatus.PENDING:
+                logger.info(f"Resuming stuck job for video: {video_id}")
+                extract_audio.delay(str(existing.id))
+                return {"status": "resumed", "video_id": str(existing.id)}
+
             return {"status": "skipped", "reason": "already_exists", "video_id": video_id}
 
-        # Fetch full metadata
+        # 2. Standard Ingestion
         metadata = fetch_video_metadata(video_url)
-        if not metadata:
-            logger.error(f"Failed to fetch metadata for: {video_url}")
-            return {"status": "error", "message": "Failed to fetch video metadata"}
+        if not metadata or metadata.duration_seconds > MAX_DURATION_SECONDS:
+            return {"status": "skipped", "reason": "invalid_or_too_long"}
 
-        # Check duration
-        if metadata.duration_seconds > MAX_DURATION_SECONDS:
-            logger.info(f"Video too long ({metadata.duration_seconds}s): {video_url}")
-            return {
-                "status": "skipped",
-                "reason": "too_long",
-                "duration_seconds": metadata.duration_seconds,
-                "max_seconds": MAX_DURATION_SECONDS,
-            }
-
-        # Create VideoSource
         video_source = VideoSource(
             url=metadata.url,
             platform=Platform.YOUTUBE,
             external_id=metadata.external_id,
-            channel_id=metadata.channel_id,
-            channel_name=metadata.channel_name,
             title=metadata.title,
-            description=metadata.description,
             duration_seconds=metadata.duration_seconds,
-            published_at=metadata.published_at,
-            thumbnail_url=metadata.thumbnail_url,
-            view_count=metadata.view_count,
             raw_metadata=metadata.raw_metadata,
         )
         session.add(video_source)
         session.flush()
 
-        # Create ProcessingJob
-        job = ProcessingJob(
-            video_source_id=video_source.id,
-            status=ProcessingStatus.PENDING,
-            started_at=datetime.now(UTC),
-        )
-        session.add(job)
+        job = session.execute(
+            select(ProcessingJob).where(ProcessingJob.id == job_id)
+        ).scalar_one_or_none() if job_id else None
+
+        if not job:
+            job = ProcessingJob(video_source_id=video_source.id, status=ProcessingStatus.PENDING)
+            session.add(job)
+
         session.commit()
 
-        logger.info(f"Video ingested: {metadata.title} (job_id={job.id})")
+        # State machine handshake
+        manager = JobManager(session, str(video_source.id))
+        manager.start_stage("ingestion")
+        manager.complete_stage(metadata={"title": metadata.title})
 
-        return {
-            "status": "ingested",
-            "video_id": str(video_source.id),
-            "job_id": str(job.id),
-            "title": metadata.title,
-        }
+        extract_audio.delay(str(video_source.id))
+        return {"status": "ingested", "video_id": str(video_source.id)}
+
     except Exception as e:
         session.rollback()
-        logger.error(f"Database error during discovery: {e}")
-        raise self.retry(exc=e) from e  # Added 'from e'
+        raise self.retry(exc=e)
     finally:
         session.close()
-
 
 @shared_task(
     name="aqar_pipeline.stages.ingestion.retry_failed_jobs",
@@ -283,16 +267,12 @@ def retry_failed_jobs():
 
     try:
         # Find failed jobs that can be retried
-        failed_jobs = (
-            session.execute(
-                select(ProcessingJob).where(
-                    ProcessingJob.status == ProcessingStatus.FAILED,
-                    ProcessingJob.retry_count < ProcessingJob.max_retries,
-                )
+        failed_jobs = session.execute(
+            select(ProcessingJob).where(
+                ProcessingJob.status == ProcessingStatus.FAILED,
+                ProcessingJob.retry_count < ProcessingJob.max_retries,
             )
-            .scalars()
-            .all()
-        )
+        ).scalars().all()
 
         retried = 0
         for job in failed_jobs:
@@ -303,7 +283,9 @@ def retry_failed_jobs():
             job.error_traceback = None
             retried += 1
 
-            logger.info(f"Retrying job {job.id} (attempt {job.retry_count}/{job.max_retries})")
+            logger.info(
+                f"Retrying job {job.id} (attempt {job.retry_count}/{job.max_retries})"
+            )
 
         session.commit()
 
