@@ -107,6 +107,7 @@ services:
       - POSTGRES_HOST=db
       - REDIS_HOST=redis
       - MEILISEARCH_HOST=meilisearch
+      - DATABASE_URL_SYNC=postgresql://aqar:aqar_dev_password@db:5432/aqar_db
       - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1

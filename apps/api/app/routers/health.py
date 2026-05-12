@@ -39,8 +39,9 @@ async def readiness_check():
 
     # Check PostgreSQL
     try:
-        from apps.api.app.core.database import engine
         from sqlalchemy import text
+
+        from apps.api.app.core.database import engine
 
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
