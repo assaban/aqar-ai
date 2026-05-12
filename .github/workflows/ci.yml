@@ -85,8 +85,9 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
         run: |
-          cd apps/api && python -m pytest tests/unit/ -v --tb=short
-          cd ../../packages/pipeline && python -m pytest tests/unit/ -v --tb=short
+          # Run from the root to allow absolute imports
+          python -m pytest apps/api/tests/unit/ -v --tb=short
+          python -m pytest packages/pipeline/tests/unit/ -v --tb=short
 
       - name: Run integration tests
         env:
@@ -95,7 +96,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
         run: |
-          cd apps/api && python -m pytest tests/integration/ -v --tb=short
+          python -m pytest apps/api/tests/integration/ -v --tb=short
 
   # ═══════════════════════════════════════
   # Frontend Lint & Build
