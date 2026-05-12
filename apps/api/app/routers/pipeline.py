@@ -11,6 +11,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from apps.api.app.core.database import get_db
 from apps.api.app.schemas import PipelineStatusResponse, PipelineSubmitRequest
@@ -127,9 +128,49 @@ def _extract_youtube_id(url: str) -> str:
     return url  # Fallback: use full URL as ID
 
 
-# apps/api/app/routers/pipeline.py
 @router.get("/pipeline/jobs", response_model=list[PipelineStatusResponse])
 async def list_all_jobs(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve the most recent processing jobs with their video URLs."""
+    # 1. Query ProcessingJob and Eager Load the VideoSource
+    result = await db.execute(
+        select(ProcessingJob)
+        .options(
+            joinedload(ProcessingJob.video_source)
+        )  # Ensure relationship is defined in your model
+        .order_by(ProcessingJob.created_at.desc())
+        .limit(limit)
+    )
+    jobs = result.unique().scalars().all()
+
+    # 2. Map the DB models to the Pydantic schema
+    response_items = []
+    for job in jobs:
+        # Check if the relationship is loaded; if not, we handle the error gracefully
+        video_url = job.video_source.url if job.video_source else "Unknown"
+
+        response_items.append(
+            PipelineStatusResponse(
+                job_id=job.id,
+                video_url=video_url,
+                status=job.status.value,
+                current_stage=job.current_stage,
+                retry_count=job.retry_count,
+                started_at=job.started_at,
+                completed_at=job.completed_at,
+                error_message=job.error_message,
+                stage_timings=job.stage_timings,
+            )
+        )
+
+    return response_items
+
+
+# apps/api/app/routers/pipeline.py
+@router.get("/pipeline/jobs", response_model=list[PipelineStatusResponse])
+async def _list_all_jobs(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = 10,
 ):

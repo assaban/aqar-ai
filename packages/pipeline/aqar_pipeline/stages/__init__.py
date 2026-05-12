@@ -9,6 +9,9 @@ from aqar_pipeline.stages.audio_extraction import (
     cleanup_audio,
     extract_audio,
 )
+from aqar_pipeline.stages.extraction import (
+    extract_properties,
+)
 from aqar_pipeline.stages.ingestion import (
     discover_videos,
     ingest_video,
@@ -25,4 +28,5 @@ __all__ = [
     "extract_audio",
     "cleanup_audio",
     "transcribe_audio",
+    "extract_properties",
 ]
