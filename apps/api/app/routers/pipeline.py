@@ -130,7 +130,7 @@ def _extract_youtube_id(url: str) -> str:
 
 @router.get("/pipeline/jobs", response_model=list[PipelineStatusResponse])
 async def list_all_jobs(
-    db: Annotated[AsyncSession, Depends(get_db)], # Annotated pattern
+    db: Annotated[AsyncSession, Depends(get_db)],  # Annotated pattern
     limit: int = 10,
 ):
     """Retrieve the most recent processing jobs with their video URLs."""
