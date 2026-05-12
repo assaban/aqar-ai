@@ -77,46 +77,136 @@ aqar-ai/
 └── pyproject.toml        # Python monorepo config
 ```
 
+## 🔀 Git Branching Strategy
+
+We follow a **Git Flow** model with protected `main`:
+
+```
+main  ←────────────────────────────────────  (production-ready, protected)
+  │
+  └── dev  ←───────────────────────────────  (integration branch)
+        │
+        ├── feature/AQAR-017-youtube-discovery
+        ├── feature/AQAR-029-whisper-transcription
+        ├── feature/AQAR-037-llm-extraction
+        └── hotfix/fix-db-connection
+```
+
+| Branch | Purpose                                                     | Merges into |
+|--------|-------------------------------------------------------------|-------------|
+| `main` | Production-ready releases. **Protected**: no direct pushes. | — |
+| `dev` | Integration branch. All features merge here first.          | `main` (via PR) |
+| `feature/AQAR-XXX-description` | One branch per user story/issue.                            | `dev` (via PR) |
+| `hotfix/description` | Urgent production fixes.                                    | `main` + `dev` |
+
+### Development Workflow
+
+```bash
+# 1. Start from dev (always pull latest)
+git checkout dev
+git pull origin dev
+
+# 2. Create a feature branch for your user story
+git checkout -b feature/AQAR-XXX-short-description
+
+# 3. Work on the feature (commit often with conventional commits)
+git add .
+git commit -m "feat(pipeline): implement YouTube channel discovery"
+
+# 4. Push and create a Pull Request → dev
+git push origin feature/AQAR-XXX-short-description
+# Open PR on GitHub: feature/AQAR-XXX → dev
+
+# 5. After PR review & CI passes, merge into dev
+# 6. When sprint is complete, PR from dev → main (release)
+```
+
+### Commit Convention
+
+We use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat(scope):     New feature              feat(pipeline): add audio extraction
+fix(scope):      Bug fix                  fix(api): correct pagination offset
+docs(scope):     Documentation            docs: update README branching strategy
+test(scope):     Tests                    test(pipeline): add ingestion unit tests
+refactor(scope): Code refactoring         refactor(db): simplify model relationships
+chore(scope):    Maintenance              chore: update dependencies
+```
+
+### Feature Documentation
+
+Every feature branch includes a short markdown document in `docs/features/`:
+
+```
+docs/features/AQAR-XXX-feature-name.md
+```
+
+This documents the analysis, design choices, and acceptance criteria for thesis traceability.
+See `docs/features/TEMPLATE.md` for the template.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Python 3.12+**
-- **Node.js 20+**
-- **Docker & Docker Compose**
-- **Make** (optional but recommended)
+- **Docker & Docker Compose** (required)
+- **Make** (recommended)
+- **Git** (required)
 
 ### Setup
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/aqar-ai.git
+git clone git@github.com:assaban/aqar-ai.git
 cd aqar-ai
 
-# 2. Copy environment files
-cp .env.example .env
+# 2. Switch to dev branch
+git checkout dev
 
-# 3. Start all services
+# 3. Copy environment files
+cp .env.example .env
+# Edit .env → set your ANTHROPIC_API_KEY
+
+# 4. Start all services
 make dev
 
-# 4. Verify everything is running
+# 5. Run database migrations
+make migrate
+
+# 6. Verify everything is running
 make health
 ```
 
 ### Available Commands
 
 ```bash
+# Development
 make dev          # Start all services (Docker Compose)
 make stop         # Stop all services
+make restart      # Restart all services
+make logs         # Tail all service logs
+make health       # Check service health
+
+# Testing (runs inside Docker)
 make test         # Run all tests
 make test-unit    # Run unit tests only
-make test-int     # Run integration tests only
-make lint         # Run all linters
+make test-int     # Run integration tests
+make test-ml      # Run ML quality benchmarks
+make test-coverage # Tests with coverage report
+
+# Code Quality (runs inside Docker)
+make lint         # Run ruff linter
 make format       # Auto-format all code
-make migrate      # Run database migrations
-make seed         # Seed database with sample data
-make health       # Check service health
-make logs         # Tail all service logs
+make typecheck    # Run mypy type checker
+
+# Database
+make migrate                              # Run migrations
+make migrate-create MSG="add X table"     # Create new migration
+make migrate-rollback                     # Rollback last migration
+
+# Utilities
+make shell-api    # Shell into API container
+make shell-db     # Open psql shell
 make clean        # Remove containers, volumes, caches
 make build        # Build all Docker images
 ```
@@ -163,7 +253,7 @@ make test-ml
 
 ## 📄 License
 
-MIT License: see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
