@@ -13,13 +13,12 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 
 from celery import shared_task
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from models.base import ProcessingJob, ProcessingStatus, VideoSource
+from models.base import VideoSource
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +172,7 @@ def extract_audio(self, video_source_id: str):
     except Exception as e:
         session.rollback()
         logger.error(f"Unexpected error in audio extraction: {e}")
-        raise self.retry(exc=e)
+        raise self.retry(exc=e) from e
 
     finally:
         session.close()

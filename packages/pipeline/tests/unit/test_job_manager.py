@@ -5,16 +5,13 @@ Tests cover: valid transitions, invalid transitions, timing recording,
 error capture, and stage metadata storage.
 """
 
-import pytest
 
 from aqar_pipeline.utils.job_manager import (
-    InvalidTransitionError,
-    VALID_TRANSITIONS,
-    STAGE_STATUS_MAP,
     STAGE_COMPLETION_MAP,
+    STAGE_STATUS_MAP,
+    VALID_TRANSITIONS,
 )
 from models.base import ProcessingStatus
-
 
 # ═══════════════════════════════════════
 # State Transition Validation

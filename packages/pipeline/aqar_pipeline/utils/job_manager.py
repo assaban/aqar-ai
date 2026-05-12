@@ -19,10 +19,11 @@ Usage in Celery tasks:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -136,7 +137,7 @@ class JobManager:
         """Set the job status with transition validation."""
         self._validate_transition(self.job.status, new_status)
         self.job.status = new_status
-        self.job.updated_at = datetime.now(timezone.utc)
+        self.job.updated_at = datetime.now(UTC)
 
     def start_stage(self, stage_name: str):
         """
@@ -163,7 +164,7 @@ class JobManager:
 
         self.job.current_stage = stage_name
         if self.job.started_at is None:
-            self.job.started_at = datetime.now(timezone.utc)
+            self.job.started_at = datetime.now(UTC)
 
         self.session.commit()
 
@@ -200,13 +201,13 @@ class JobManager:
             stage_meta[self._current_stage] = metadata
             self.job.stage_metadata = stage_meta
 
-        # Transition to next status
+        # 2. Update the transition logic to use suppress
         next_status = STAGE_COMPLETION_MAP.get(self._current_stage)
         if next_status and self.job.status != next_status:
-            try:
+            with contextlib.suppress(InvalidTransitionError):
                 self._set_status(next_status)
-            except InvalidTransitionError:
-                pass  # Already at or past this status
+
+        self.session.commit()
 
         self.session.commit()
 
@@ -259,7 +260,7 @@ class JobManager:
     def mark_completed(self):
         """Mark the entire pipeline as completed."""
         self._set_status(ProcessingStatus.COMPLETED)
-        self.job.completed_at = datetime.now(timezone.utc)
+        self.job.completed_at = datetime.now(UTC)
         self.job.current_stage = None
         self.session.commit()
 

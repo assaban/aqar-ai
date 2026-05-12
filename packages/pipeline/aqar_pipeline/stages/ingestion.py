@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
 
 from celery import shared_task
 from sqlalchemy import create_engine, select
@@ -60,8 +59,8 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
         config_path: Optional path to channels.yml. Uses default if None.
     """
     from aqar_pipeline.config.loader import load_channels_config
-    from aqar_pipeline.utils.youtube import fetch_channel_videos
     from aqar_pipeline.stages.audio_extraction import extract_audio
+    from aqar_pipeline.utils.youtube import fetch_channel_videos
 
     logger.info(f"Starting video discovery for region: {region}")
 
@@ -153,7 +152,7 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
 
     except Exception as e:
         session.rollback()
-        raise self.retry(exc=e)
+        raise self.retry(exc=e) from e
     finally:
         session.close()
 
@@ -184,9 +183,9 @@ def ingest_video(self, video_url: str, job_id: str | None = None):
     Ingest a single video URL.
     Accepts job_id to maintain state machine synchronization.
     """
-    from aqar_pipeline.utils.youtube import extract_youtube_id, fetch_video_metadata
-    from aqar_pipeline.utils.job_manager import JobManager
     from aqar_pipeline.stages.audio_extraction import extract_audio
+    from aqar_pipeline.utils.job_manager import JobManager
+    from aqar_pipeline.utils.youtube import extract_youtube_id, fetch_video_metadata
 
     video_id = extract_youtube_id(video_url)
     session = _get_sync_session()
@@ -248,7 +247,7 @@ def ingest_video(self, video_url: str, job_id: str | None = None):
 
     except Exception as e:
         session.rollback()
-        raise self.retry(exc=e)
+        raise self.retry(exc=e) from e
     finally:
         session.close()
 

@@ -5,6 +5,7 @@ CRUD and search endpoints for real estate properties.
 """
 
 import uuid
+from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,10 +17,9 @@ from apps.api.app.core.database import get_db
 from apps.api.app.schemas import (
     PropertyListResponse,
     PropertyResponse,
-    PropertySearchQuery,
     StatsResponse,
 )
-from models.base import Property, Location, ProcessingJob, ProcessingStatus, VideoSource
+from models.base import Location, ProcessingJob, ProcessingStatus, Property, VideoSource
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -27,6 +27,7 @@ router = APIRouter()
 
 @router.get("/properties", response_model=PropertyListResponse)
 async def list_properties(
+    db: Annotated[AsyncSession, Depends(get_db)],
     q: str | None = None,
     property_type: str | None = None,
     listing_type: str | None = None,
@@ -40,7 +41,6 @@ async def list_properties(
     per_page: int = Query(20, ge=1, le=100),
     sort_by: str = "created_at",
     sort_order: str = "desc",
-    db: AsyncSession = Depends(get_db),
 ):
     """
     List and filter properties.
@@ -103,8 +103,8 @@ async def list_properties(
 
 @router.get("/properties/{property_id}", response_model=PropertyResponse)
 async def get_property(
+    db: Annotated[AsyncSession, Depends(get_db)],
     property_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
 ):
     """Get a single property by ID with full details."""
     query = (
@@ -122,7 +122,7 @@ async def get_property(
 
 
 @router.get("/stats", response_model=StatsResponse)
-async def get_stats(db: AsyncSession = Depends(get_db)):
+async def get_stats(db: Annotated[AsyncSession, Depends(get_db)]):
     """Get system-wide statistics."""
     videos = await db.execute(select(func.count(VideoSource.id)))
     properties = await db.execute(select(func.count(Property.id)))
