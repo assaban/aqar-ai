@@ -8,6 +8,7 @@ Handles channel scanning, video info extraction, and URL normalization.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -216,3 +217,75 @@ def fetch_video_metadata(video_url: str) -> VideoMetadata | None:
     except Exception as e:
         logger.error(f"Error fetching video metadata for {video_url}: {e}")
         return None
+
+
+def download_audio(
+    video_url: str,
+    output_path: str,
+    sample_rate: int = 16000,
+) -> bool:
+    """
+    Download audio from a YouTube video and convert to WAV.
+
+    Uses yt-dlp to extract the best audio stream, then FFmpeg
+    to convert to WAV format (16kHz mono) optimized for Whisper.
+
+    Args:
+        video_url: YouTube video URL.
+        output_path: Full path for the output WAV file (without extension,
+                     yt-dlp will add it, or with .wav which we handle).
+        sample_rate: Target sample rate in Hz (default 16000 for Whisper).
+
+    Returns:
+        True if download and conversion succeeded, False otherwise.
+    """
+    # yt-dlp expects output template without extension for postprocessor
+    # Remove .wav if present since FFmpeg postprocessor adds it
+    output_template = output_path
+    if output_template.endswith(".wav"):
+        output_template = output_template[:-4]
+
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "no_color": True,
+        "format": "bestaudio/best",
+        "outtmpl": output_template + ".%(ext)s",
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "wav",
+            }
+        ],
+        "postprocessor_args": {
+            "FFmpegExtractAudio": [
+                "-ar", str(sample_rate),
+                "-ac", "1",  # mono
+            ],
+        },
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            result = ydl.download([video_url])
+
+            if result != 0:
+                logger.error(f"yt-dlp returned non-zero exit code: {result}")
+                return False
+
+        # Verify the output file exists
+        expected_path = output_template + ".wav"
+        if not os.path.exists(expected_path):
+            logger.error(f"Expected output not found: {expected_path}")
+            return False
+
+        file_size = os.path.getsize(expected_path)
+        logger.info(
+            f"Audio downloaded: {expected_path} "
+            f"({file_size / (1024 * 1024):.1f} MB)"
+        )
+        return True
+
+    except Exception as e:
+        logger.error(f"Error downloading audio from {video_url}: {e}")
+        return False
