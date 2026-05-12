@@ -90,15 +90,46 @@ class PropertySearchQuery(BaseModel):
     rooms_min: int | None = None
     neighborhood: str | None = None
     city: str | None = None
-    # Geo search
     lat: float | None = Field(None, description="Center latitude for radius search")
     lng: float | None = Field(None, description="Center longitude for radius search")
     radius_km: float | None = Field(None, description="Search radius in kilometers")
-    # Pagination
     page: int = Field(1, ge=1)
     per_page: int = Field(20, ge=1, le=100)
     sort_by: str = "created_at"
     sort_order: str = "desc"
+
+
+# ═══════════════════════════════════════
+# Search Schemas
+# ═══════════════════════════════════════
+
+
+class SearchHit(BaseModel):
+    """A single search result from Meilisearch."""
+
+    id: str
+    property_type: str = "other"
+    listing_type: str = "unknown"
+    title_generated: str = ""
+    description_generated: str = ""
+    price: float | None = None
+    area_sqm: float | None = None
+    rooms: int | None = None
+    bedrooms: int | None = None
+    neighborhood: str = ""
+    city: str = "Tangier"
+    legal_status: str = "unknown"
+
+
+class SearchResponse(BaseModel):
+    """Full-text search response from Meilisearch."""
+
+    hits: list[SearchHit]
+    query: str
+    total: int = 0
+    processing_time_ms: int = 0
+    page: int = 1
+    per_page: int = 20
 
 
 # ═══════════════════════════════════════
@@ -120,6 +151,28 @@ class VideoSourceResponse(BaseModel):
     properties_count: int = 0
 
     model_config = {"from_attributes": True}
+
+
+class VideoDetailResponse(VideoSourceResponse):
+    """Video detail with transcript and properties."""
+
+    transcript_text: str | None = None
+    transcript_language: str | None = None
+    transcript_confidence: float | None = None
+    properties: list[PropertyResponse] = []
+    processing_status: str | None = None
+    processing_stage: str | None = None
+    stage_timings: dict | None = None
+
+
+class VideoListResponse(BaseModel):
+    """Paginated video list."""
+
+    items: list[VideoSourceResponse]
+    total: int
+    page: int = 1
+    per_page: int = 20
+    has_next: bool = False
 
 
 # ═══════════════════════════════════════
@@ -163,6 +216,16 @@ class HealthResponse(BaseModel):
     services: dict[str, str] = {}
 
 
+class NeighborhoodStat(BaseModel):
+    """Statistics for a single neighborhood."""
+
+    neighborhood: str
+    property_count: int = 0
+    avg_price: float | None = None
+    min_price: float | None = None
+    max_price: float | None = None
+
+
 class StatsResponse(BaseModel):
     """System statistics."""
 
@@ -171,4 +234,15 @@ class StatsResponse(BaseModel):
     total_published: int = 0
     processing_pending: int = 0
     processing_failed: int = 0
+    processing_completed: int = 0
     avg_extraction_confidence: float | None = None
+    avg_pipeline_time_seconds: float | None = None
+    property_types: dict[str, int] = {}
+    listing_types: dict[str, int] = {}
+
+
+class NeighborhoodStatsResponse(BaseModel):
+    """Per-neighborhood statistics."""
+
+    neighborhoods: list[NeighborhoodStat]
+    total_neighborhoods: int = 0
