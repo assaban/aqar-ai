@@ -15,7 +15,6 @@ import httpx
 from aqar_pipeline.providers.base import (
     ExtractionResult,
     LLMProvider,
-    ProviderConfig,
 )
 
 logger = logging.getLogger(__name__)

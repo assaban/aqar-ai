@@ -7,7 +7,6 @@ Secondary provider for high-accuracy extraction and benchmarking.
 
 from __future__ import annotations
 
-import json
 import logging
 import time
 
@@ -16,7 +15,6 @@ import httpx
 from aqar_pipeline.providers.base import (
     ExtractionResult,
     LLMProvider,
-    ProviderConfig,
 )
 
 logger = logging.getLogger(__name__)

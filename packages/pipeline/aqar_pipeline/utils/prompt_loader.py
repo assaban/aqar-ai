@@ -37,9 +37,9 @@ def get_prompt(version: str = "v1") -> dict:
 
     try:
         module = importlib.import_module(module_name)
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as err:
         logger.error(f"Prompt module not found: {module_name}")
-        raise FileNotFoundError(f"Prompt version not found: {version}")
+        raise FileNotFoundError(f"Prompt version not found: {version}") from err
 
     system_prompt = getattr(module, "SYSTEM_PROMPT", "")
     user_template = getattr(module, "USER_PROMPT_TEMPLATE", "")

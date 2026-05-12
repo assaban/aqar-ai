@@ -17,7 +17,6 @@ from aqar_pipeline.providers.base import (
     ProviderName,
 )
 
-
 # ═══════════════════════════════════════
 # Provider Registry
 # ═══════════════════════════════════════

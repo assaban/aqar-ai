@@ -8,7 +8,6 @@ confidence flagging, and safe enum conversion.
 from aqar_pipeline.stages.extraction import _create_property_from_data, _safe_enum
 from models.base import LegalStatus, ListingType, PropertyType
 
-
 # ═══════════════════════════════════════
 # Safe Enum Conversion
 # ═══════════════════════════════════════
