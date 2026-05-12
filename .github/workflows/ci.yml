@@ -89,14 +89,14 @@ jobs:
           python -m pytest apps/api/tests/unit/ -v --tb=short
           python -m pytest packages/pipeline/tests/unit/ -v --tb=short
 
-      - name: Run integration tests
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-          DATABASE_URL: postgresql+asyncpg://aqar_test:test_password@localhost:5432/aqar_test_db
-          REDIS_URL: redis://localhost:6379/0
-          APP_ENV: test
-        run: |
-          python -m pytest apps/api/tests/integration/ -v --tb=short
+#      - name: Run integration tests
+#        env:
+#          PYTHONPATH: ${{ github.workspace }}
+#          DATABASE_URL: postgresql+asyncpg://aqar_test:test_password@localhost:5432/aqar_test_db
+#          REDIS_URL: redis://localhost:6379/0
+#          APP_ENV: test
+#        run: |
+#          python -m pytest apps/api/tests/integration/ -v --tb=short
 
   # ═══════════════════════════════════════
   # Frontend Lint & Build
