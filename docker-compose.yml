@@ -71,11 +71,9 @@ services:
       - POSTGRES_HOST=db
       - REDIS_HOST=redis
       - MEILISEARCH_HOST=meilisearch
-      - DATABASE_URL_SYNC=postgresql://aqar:aqar_dev_password@db:5432/aqar_db
       - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2  # <── ADD THIS LINE
       - MEILISEARCH_URL=http://meilisearch:7700
     ports:
       - "${API_PORT:-8000}:8000"
@@ -108,11 +106,9 @@ services:
       - POSTGRES_HOST=db
       - REDIS_HOST=redis
       - MEILISEARCH_HOST=meilisearch
-      - DATABASE_URL_SYNC=postgresql://aqar:aqar_dev_password@db:5432/aqar_db
       - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2  # <── ADD THIS LINE
       - MEILISEARCH_URL=http://meilisearch:7700
     volumes:
       - ./apps/api:/app/apps/api
@@ -139,7 +135,6 @@ services:
     env_file: .env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2  # <── ADD THIS LINE
     volumes:
       - ./packages:/app/packages
     depends_on:
@@ -162,6 +157,21 @@ services:
       redis:
         condition: service_healthy
 
+  # ── Ollama (Local LLM Server) ──
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aqar-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
     driver: local
@@ -170,4 +180,6 @@ volumes:
   meilidata:
     driver: local
   downloads:
+    driver: local
+  ollamadata:
     driver: local

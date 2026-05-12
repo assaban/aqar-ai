@@ -219,9 +219,10 @@ def transcribe_audio(self, video_source_id: str, audio_path: str):
         # Cleanup audio file (no longer needed)
         cleanup_audio.delay(video.external_id)
 
-        # TODO [Sprint 4]: Chain to LLM extraction
-        # from aqar_pipeline.stages.extraction import extract_properties
-        # extract_properties.delay(video_source_id)
+        # Chain to LLM extraction
+        from aqar_pipeline.stages.extraction import extract_properties
+
+        extract_properties.delay(video_source_id)
 
         return {
             "status": "completed",
