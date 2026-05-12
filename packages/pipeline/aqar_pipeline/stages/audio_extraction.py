@@ -147,9 +147,10 @@ def extract_audio(self, video_source_id: str):
             f"size={audio_info.file_size_bytes / (1024 * 1024):.1f}MB)"
         )
 
-        # TODO [Sprint 3]: Chain to transcription stage
-        # from aqar_pipeline.stages.transcription import transcribe_audio
-        # transcribe_audio.delay(video_source_id, audio_path)
+        # Chain to transcription stage
+        from aqar_pipeline.stages.transcription import transcribe_audio
+
+        transcribe_audio.delay(video_source_id, audio_path)
 
         return {
             "status": "completed",

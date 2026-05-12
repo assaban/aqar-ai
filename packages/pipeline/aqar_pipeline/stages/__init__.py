@@ -14,6 +14,9 @@ from aqar_pipeline.stages.ingestion import (
     ingest_video,
     retry_failed_jobs,
 )
+from aqar_pipeline.stages.transcription import (
+    transcribe_audio,
+)
 
 __all__ = [
     "discover_videos",
@@ -21,4 +24,5 @@ __all__ = [
     "retry_failed_jobs",
     "extract_audio",
     "cleanup_audio",
+    "transcribe_audio",
 ]
