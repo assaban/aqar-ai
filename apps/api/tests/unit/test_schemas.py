@@ -4,6 +4,7 @@ Unit tests for API schemas.
 Tests cover: response model validation, search hit mapping,
 neighborhood stats, and video detail response.
 """
+
 import uuid
 
 from apps.api.app.schemas import (
@@ -101,7 +102,7 @@ class TestVideoSchemas:
 
     def test_video_detail_response(self):
         resp = VideoDetailResponse(
-            id=str(uuid.uuid4()), # Generates a valid random UUID
+            id=str(uuid.uuid4()),  # Generates a valid random UUID
             url="https://youtube.com/watch?v=test",
             platform="youtube",
             title="Test Video",
