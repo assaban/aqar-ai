@@ -8,16 +8,16 @@ body:
     attributes:
       label: Target Sprint
       options:
-        - "Sprint 1 — Foundation & Scaffold"
-        - "Sprint 2 — Ingestion Pipeline"
-        - "Sprint 3 — Transcription Pipeline"
-        - "Sprint 4 — LLM Extraction"
-        - "Sprint 5 — Geocoding & Storage"
-        - "Sprint 6 — API & Search"
-        - "Sprint 7 — Web Portal"
-        - "Sprint 8 — Mobile App"
-        - "Sprint 9 — Quality & Monitoring"
-        - "Sprint 10 — Deployment & Thesis"
+        - "Sprint 1: Foundation & Scaffold"
+        - "Sprint 2: Ingestion Pipeline"
+        - "Sprint 3: Transcription Pipeline"
+        - "Sprint 4: LLM Extraction"
+        - "Sprint 5: Geocoding & Storage"
+        - "Sprint 6: API & Search"
+        - "Sprint 7: Web Portal"
+        - "Sprint 8: Mobile App"
+        - "Sprint 9: Quality & Monitoring"
+        - "Sprint 10: Deployment & Thesis"
         - "Backlog"
     validations:
       required: true
@@ -44,9 +44,9 @@ body:
     attributes:
       label: Priority
       options:
-        - "P0 — Critical (MVP blocker)"
-        - "P1 — High (Sprint goal)"
-        - "P2 — Medium (Nice to have)"
-        - "P3 — Low (Future)"
+        - "P0: Critical (MVP blocker)"
+        - "P1: High (Sprint goal)"
+        - "P2: Medium (Nice to have)"
+        - "P3: Low (Future)"
     validations:
       required: true

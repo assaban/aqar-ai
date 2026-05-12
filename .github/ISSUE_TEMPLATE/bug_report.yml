@@ -8,13 +8,13 @@ body:
     attributes:
       label: Component
       options:
-        - "Pipeline — Ingestion"
-        - "Pipeline — Transcription"
-        - "Pipeline — LLM Extraction"
-        - "Pipeline — Geocoding"
-        - "API — Backend"
-        - "Web — Frontend"
-        - "Mobile — App"
+        - "Pipeline:Ingestion"
+        - "Pipeline: Transcription"
+        - "Pipeline: LLM Extraction"
+        - "Pipeline: Geocoding"
+        - "API: Backend"
+        - "Web: Frontend"
+        - "Mobile: App"
         - "Database"
         - "Infrastructure / Docker"
         - "CI/CD"
