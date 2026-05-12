@@ -19,14 +19,14 @@ from apps.api.app.schemas import (
     PropertyResponse,
     StatsResponse,
 )
-from packages.db.models import Location, ProcessingJob, ProcessingStatus, Property, VideoSource
+from models.base import Location, ProcessingJob, ProcessingStatus, Property, VideoSource
 
 logger = structlog.get_logger()
 router = APIRouter()
 
 
 @router.get("/properties", response_model=PropertyListResponse)
-async def list_properties(  # Move the dependency to the start to satisfy Python syntax and B008
+async def list_properties(
     db: Annotated[AsyncSession, Depends(get_db)],
     q: str | None = None,
     property_type: str | None = None,
@@ -101,8 +101,8 @@ async def list_properties(  # Move the dependency to the start to satisfy Python
 
 @router.get("/properties/{property_id}", response_model=PropertyResponse)
 async def get_property(
-    property_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
+    property_id: uuid.UUID,
 ):
     """Get a single property by ID with full details."""
     query = (
