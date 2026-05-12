@@ -1,0 +1,53 @@
+# ============================================
+# Aqar.ai: YouTube Channel Configuration
+# ============================================
+# Channels are organized by region and agent type.
+# The discovery task scans these channels periodically.
+#
+# How to add a channel:
+#   1. Find the channel URL on YouTube
+#   2. Add it below with a descriptive name
+#   3. Set max_videos to limit how far back to scan
+#   4. Commit to version control
+# ============================================
+
+region: tangier-tetouan
+
+# Default settings (can be overridden per channel)
+defaults:
+  max_videos: 20          # Max videos to fetch per scan
+  language_hint: ar       # Expected language
+  enabled: true
+
+channels:
+  # ── Tangier Agents ──
+  # NOTE: Replace these with real channel URLs/IDs during Sprint 2 research.
+  # These are placeholder entries to demonstrate the config structure.
+
+  - name: "aakarat Bouchra tanjawiya"
+    channel_url: "https://www.youtube.com/@yawmiyatBouchratanjawiya1"
+    description: "Real estate agency covering central Tangier"
+    max_videos: 30
+    tags: [tangier, agency, apartment, villa]
+
+  - name: "Ismail Akil"
+    channel_url: "https://www.youtube.com/@IsmailAkil-ph4dc"
+    description: "Tetouan area property listings"
+    max_videos: 20
+    tags: [tetouan, agency]
+
+  - name: "عقارات عبد المنعم النجري"
+    channel_url: "https://www.youtube.com/@mon3ims3idi124"
+    description: "Covers Tangier, Tetouan, and Al Hoceima"
+    max_videos: 25
+    tags: [tangier, tetouan, al-hoceima, mixed]
+
+  # ── Independent Agents ──
+  # Individual agents who post property tours
+
+  # - name: "Agent Name"
+  #   channel_url: "https://www.youtube.com/@channel-handle"
+  #   description: "Short description"
+  #   max_videos: 15
+  #   tags: [tangier, independent]
+  #   enabled: false  # Set to true when verified
