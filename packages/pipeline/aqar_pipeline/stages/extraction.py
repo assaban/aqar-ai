@@ -226,9 +226,10 @@ def extract_properties(
             f"({result.tokens_used} tokens, {result.processing_time_seconds}s)"
         )
 
-        # TODO [Sprint 5]: Chain to geocoding
-        # from aqar_pipeline.stages.geocoding import geocode_properties
-        # geocode_properties.delay(video_source_id)
+        # Chain to geocoding
+        from aqar_pipeline.stages.geocoding import geocode_properties
+
+        geocode_properties.delay(video_source_id)
 
         return {
             "status": "completed",

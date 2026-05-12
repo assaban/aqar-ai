@@ -12,6 +12,9 @@ from aqar_pipeline.stages.audio_extraction import (
 from aqar_pipeline.stages.extraction import (
     extract_properties,
 )
+from aqar_pipeline.stages.geocoding import (
+    geocode_properties,
+)
 from aqar_pipeline.stages.ingestion import (
     discover_videos,
     ingest_video,
@@ -29,4 +32,5 @@ __all__ = [
     "cleanup_audio",
     "transcribe_audio",
     "extract_properties",
+    "geocode_properties",
 ]

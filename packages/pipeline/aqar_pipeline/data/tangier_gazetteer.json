@@ -1,0 +1,451 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "region": "tangier-tetouan",
+    "source": "Manually compiled from OpenStreetMap, Google Maps, and local knowledge",
+    "last_updated": "2026-05-12",
+    "total_entries": 55
+  },
+  "neighborhoods": [
+    {
+      "id": "iberia",
+      "names": ["Iberia", "إيبيريا", "ايبيريا", "Ibéria"],
+      "latitude": 35.7695,
+      "longitude": -5.8100,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "marshan",
+      "names": ["Marshan", "مرشان", "المرشان", "Marchane"],
+      "latitude": 35.7870,
+      "longitude": -5.8180,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "malabata",
+      "names": ["Malabata", "ملاباطا", "مالاباطا", "Malabata Plage"],
+      "latitude": 35.7920,
+      "longitude": -5.7810,
+      "city": "Tangier",
+      "type": "coastal"
+    },
+    {
+      "id": "boukhalef",
+      "names": ["Boukhalef", "بوخالف", "بو خالف", "Boukhalf"],
+      "latitude": 35.7380,
+      "longitude": -5.8530,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "val_fleuri",
+      "names": ["Val Fleuri", "فال فلوري", "فال فلري", "Val Fleury"],
+      "latitude": 35.7670,
+      "longitude": -5.8010,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "mesnana",
+      "names": ["Mesnana", "مسنانة", "المسنانة", "Masnana"],
+      "latitude": 35.7520,
+      "longitude": -5.8350,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "medina",
+      "names": ["Medina", "المدينة القديمة", "المدينة", "Ancienne Médina"],
+      "latitude": 35.7870,
+      "longitude": -5.8130,
+      "city": "Tangier",
+      "type": "historic"
+    },
+    {
+      "id": "california",
+      "names": ["California", "كاليفورنيا", "حي كاليفورنيا"],
+      "latitude": 35.7620,
+      "longitude": -5.8150,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "tanja_balia",
+      "names": ["Tanja Balia", "طنجة البالية", "طنجة القديمة", "Tanger la Vieille"],
+      "latitude": 35.7860,
+      "longitude": -5.8140,
+      "city": "Tangier",
+      "type": "historic"
+    },
+    {
+      "id": "beni_makada",
+      "names": ["Beni Makada", "بني مكادة", "بني مقادة", "Béni Makada"],
+      "latitude": 35.7550,
+      "longitude": -5.8200,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "souani",
+      "names": ["Souani", "السواني", "سواني", "Al Souani"],
+      "latitude": 35.7710,
+      "longitude": -5.7980,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "branes",
+      "names": ["Branes", "برانس", "البرانس"],
+      "latitude": 35.7490,
+      "longitude": -5.8280,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "moujahidine",
+      "names": ["Moujahidine", "المجاهدين", "حي المجاهدين"],
+      "latitude": 35.7680,
+      "longitude": -5.8200,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "dradeb",
+      "names": ["Dradeb", "درادب", "الدرادب", "Dradeb"],
+      "latitude": 35.7820,
+      "longitude": -5.8100,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "place_mozart",
+      "names": ["Place Mozart", "ساحة موزار", "بلاصة موزار"],
+      "latitude": 35.7720,
+      "longitude": -5.8050,
+      "city": "Tangier",
+      "type": "commercial"
+    },
+    {
+      "id": "boulevard_pasteur",
+      "names": ["Boulevard Pasteur", "شارع باستور", "بولفار باستور"],
+      "latitude": 35.7770,
+      "longitude": -5.8090,
+      "city": "Tangier",
+      "type": "commercial"
+    },
+    {
+      "id": "haffa",
+      "names": ["Haffa", "الحافة", "حافة", "Café Hafa"],
+      "latitude": 35.7890,
+      "longitude": -5.8200,
+      "city": "Tangier",
+      "type": "coastal"
+    },
+    {
+      "id": "rmilat",
+      "names": ["Rmilat", "الرميلات", "رميلات", "Forêt de Rmilat"],
+      "latitude": 35.7790,
+      "longitude": -5.8280,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "aouama",
+      "names": ["Aouama", "العوامة", "عوامة"],
+      "latitude": 35.7450,
+      "longitude": -5.8100,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "jbel_kebir",
+      "names": ["Jbel Kebir", "الجبل الكبير", "جبل كبير"],
+      "latitude": 35.7940,
+      "longitude": -5.8300,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "achakar",
+      "names": ["Achakar", "أشقار", "اشاقار", "Cap Achakar"],
+      "latitude": 35.7990,
+      "longitude": -5.8450,
+      "city": "Tangier",
+      "type": "coastal"
+    },
+    {
+      "id": "gzenaya",
+      "names": ["Gzenaya", "كزناية", "اكزناية", "Gueznaia"],
+      "latitude": 35.7300,
+      "longitude": -5.8650,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "ziaten",
+      "names": ["Ziaten", "زياتن", "الزياتن"],
+      "latitude": 35.7480,
+      "longitude": -5.8450,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "tanja_marina",
+      "names": ["Tanja Marina", "طنجة مارينا", "مارينا طنجة", "Marina Bay"],
+      "latitude": 35.7850,
+      "longitude": -5.8030,
+      "city": "Tangier",
+      "type": "luxury"
+    },
+    {
+      "id": "zone_franche",
+      "names": ["Zone Franche", "المنطقة الحرة", "زون فرانش", "TFZ"],
+      "latitude": 35.7350,
+      "longitude": -5.8850,
+      "city": "Tangier",
+      "type": "industrial"
+    },
+    {
+      "id": "centre_ville",
+      "names": ["Centre Ville", "وسط المدينة", "السونطر", "Downtown"],
+      "latitude": 35.7740,
+      "longitude": -5.8040,
+      "city": "Tangier",
+      "type": "commercial"
+    },
+    {
+      "id": "sidi_driss",
+      "names": ["Sidi Driss", "سيدي إدريس", "سيدي ادريس"],
+      "latitude": 35.7600,
+      "longitude": -5.8080,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "hay_benkirane",
+      "names": ["Hay Benkirane", "حي بنكيران", "بنكيران"],
+      "latitude": 35.7580,
+      "longitude": -5.8160,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "route_tetouan",
+      "names": ["Route de Tétouan", "طريق تطوان", "روت تطوان"],
+      "latitude": 35.7650,
+      "longitude": -5.7900,
+      "city": "Tangier",
+      "type": "commercial"
+    },
+    {
+      "id": "casabarata",
+      "names": ["Casabarata", "كازابراطا", "كسا براطا"],
+      "latitude": 35.7560,
+      "longitude": -5.8250,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "tetouan_centre",
+      "names": ["Tetouan Centre", "وسط تطوان", "تطوان المدينة", "Centre Tétouan"],
+      "latitude": 35.5712,
+      "longitude": -5.3688,
+      "city": "Tetouan",
+      "type": "commercial"
+    },
+    {
+      "id": "martil",
+      "names": ["Martil", "مرتيل", "مارتيل"],
+      "latitude": 35.6164,
+      "longitude": -5.2747,
+      "city": "Martil",
+      "type": "coastal"
+    },
+    {
+      "id": "mdiq",
+      "names": ["M'diq", "المضيق", "مضيق", "Mdiq"],
+      "latitude": 35.6850,
+      "longitude": -5.3280,
+      "city": "M'diq",
+      "type": "coastal"
+    },
+    {
+      "id": "fnideq",
+      "names": ["Fnideq", "الفنيدق", "فنيدق"],
+      "latitude": 35.8494,
+      "longitude": -5.3530,
+      "city": "Fnideq",
+      "type": "border"
+    },
+    {
+      "id": "chefchaouen",
+      "names": ["Chefchaouen", "شفشاون", "الشاون", "Chaouen"],
+      "latitude": 35.1688,
+      "longitude": -5.2636,
+      "city": "Chefchaouen",
+      "type": "historic"
+    },
+    {
+      "id": "houara",
+      "names": ["Houara", "هوارة", "الهوارة"],
+      "latitude": 35.7150,
+      "longitude": -5.8900,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "laaouina",
+      "names": ["Laaouina", "العوينة", "لعوينة"],
+      "latitude": 35.7580,
+      "longitude": -5.8500,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "boughaz",
+      "names": ["Boughaz", "البوغاز", "بوغاز"],
+      "latitude": 35.7950,
+      "longitude": -5.8000,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "bir_chifa",
+      "names": ["Bir Chifa", "بئر الشفاء", "بير شيفا"],
+      "latitude": 35.7530,
+      "longitude": -5.8380,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "hay_hassani",
+      "names": ["Hay Hassani", "حي الحسني", "الحسني"],
+      "latitude": 35.7560,
+      "longitude": -5.8060,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "achakkar_plage",
+      "names": ["Achakkar Plage", "شاطئ أشقار", "بلاج أشقار"],
+      "latitude": 35.8020,
+      "longitude": -5.8500,
+      "city": "Tangier",
+      "type": "coastal"
+    },
+    {
+      "id": "merkala",
+      "names": ["Merkala", "مركالة", "شاطئ مركالة"],
+      "latitude": 35.7900,
+      "longitude": -5.8160,
+      "city": "Tangier",
+      "type": "coastal"
+    },
+    {
+      "id": "mabrouk",
+      "names": ["Mabrouk", "مبروك", "حي مبروك"],
+      "latitude": 35.7640,
+      "longitude": -5.8180,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "moghogha",
+      "names": ["Moghogha", "مغوغة", "المغوغة"],
+      "latitude": 35.7620,
+      "longitude": -5.7920,
+      "city": "Tangier",
+      "type": "commercial"
+    },
+    {
+      "id": "sidi_kacem",
+      "names": ["Sidi Kacem", "سيدي قاسم", "حي سيدي قاسم"],
+      "latitude": 35.7680,
+      "longitude": -5.8250,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "tanger_med",
+      "names": ["Tanger Med", "طنجة المتوسط", "ميناء طنجة", "Port Tanger Med"],
+      "latitude": 35.8860,
+      "longitude": -5.5000,
+      "city": "Tangier",
+      "type": "port"
+    },
+    {
+      "id": "ibn_batouta_airport",
+      "names": ["Ibn Batouta Airport", "مطار ابن بطوطة", "لابورت"],
+      "latitude": 35.7268,
+      "longitude": -5.9168,
+      "city": "Tangier",
+      "type": "airport"
+    },
+    {
+      "id": "nuevo_charf",
+      "names": ["Nuevo Charf", "نويفو شرف", "شرف"],
+      "latitude": 35.7750,
+      "longitude": -5.7930,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "jouamaa",
+      "names": ["Jouamaa", "الجوامعة", "جوامعة"],
+      "latitude": 35.7420,
+      "longitude": -5.8000,
+      "city": "Tangier",
+      "type": "suburban"
+    },
+    {
+      "id": "tanja_city_center",
+      "names": ["Tanja City Center", "طنجة سيتي سنتر", "سيتي سنتر"],
+      "latitude": 35.7590,
+      "longitude": -5.8320,
+      "city": "Tangier",
+      "type": "commercial"
+    },
+    {
+      "id": "lot_el_araar",
+      "names": ["Lot Al Araar", "لوت العرعار", "العرعار"],
+      "latitude": 35.7510,
+      "longitude": -5.8420,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "jamaa_mezouak",
+      "names": ["Jamaa Mezouak", "جامع مزواق", "مزواق"],
+      "latitude": 35.7440,
+      "longitude": -5.8100,
+      "city": "Tangier",
+      "type": "residential"
+    },
+    {
+      "id": "cabo_negro",
+      "names": ["Cabo Negro", "كابو نيكرو", "كاب نيغرو"],
+      "latitude": 35.6550,
+      "longitude": -5.2900,
+      "city": "Tetouan",
+      "type": "coastal"
+    },
+    {
+      "id": "azla",
+      "names": ["Azla", "أزلا", "ازلا"],
+      "latitude": 35.5350,
+      "longitude": -5.2250,
+      "city": "Tetouan",
+      "type": "coastal"
+    },
+    {
+      "id": "sania_ramel",
+      "names": ["Sania Ramel", "سانية الرمل", "سانية رمل"],
+      "latitude": 35.5650,
+      "longitude": -5.3800,
+      "city": "Tetouan",
+      "type": "residential"
+    }
+  ]
+}
