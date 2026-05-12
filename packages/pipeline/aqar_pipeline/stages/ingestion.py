@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from celery import shared_task
 from sqlalchemy import create_engine, select
@@ -146,11 +146,10 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
                 logger.info(f"Discovered new video: {video.title} ({video.external_id})")
 
         session.commit()
-
     except Exception as e:
         session.rollback()
         logger.error(f"Database error during discovery: {e}")
-        raise self.retry(exc=e)
+        raise self.retry(exc=e) from e  # Added 'from e'
     finally:
         session.close()
 
@@ -248,7 +247,7 @@ def ingest_video(self, video_url: str):
         job = ProcessingJob(
             video_source_id=video_source.id,
             status=ProcessingStatus.PENDING,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         session.add(job)
         session.commit()
@@ -261,11 +260,10 @@ def ingest_video(self, video_url: str):
             "job_id": str(job.id),
             "title": metadata.title,
         }
-
     except Exception as e:
         session.rollback()
-        logger.error(f"Error ingesting video {video_url}: {e}")
-        raise self.retry(exc=e)
+        logger.error(f"Database error during discovery: {e}")
+        raise self.retry(exc=e) from e  # Added 'from e'
     finally:
         session.close()
 

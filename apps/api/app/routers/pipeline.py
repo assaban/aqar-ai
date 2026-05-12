@@ -5,6 +5,7 @@ Submit videos for processing and check pipeline status.
 """
 
 import uuid
+from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.app.core.database import get_db
 from apps.api.app.schemas import PipelineStatusResponse, PipelineSubmitRequest
-from packages.db.models import ProcessingJob, ProcessingStatus, VideoSource, Platform
+from packages.db.models import Platform, ProcessingJob, ProcessingStatus, VideoSource
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -22,7 +23,7 @@ router = APIRouter()
 @router.post("/pipeline/submit", response_model=PipelineStatusResponse)
 async def submit_video(
     request: PipelineSubmitRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Submit a video URL for processing through the AI pipeline.
@@ -83,7 +84,7 @@ async def submit_video(
 @router.get("/pipeline/status/{job_id}", response_model=PipelineStatusResponse)
 async def get_pipeline_status(
     job_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Check the processing status of a submitted video."""
     query = (

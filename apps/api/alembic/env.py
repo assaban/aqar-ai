@@ -5,9 +5,9 @@ Alembic environment configuration — sync migrations.
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from alembic import context
 from models.base import Base
 
 config = context.config
@@ -51,9 +51,7 @@ def include_object(object, name, type_, reflected, compare_to):
         "pagc_lex", "pagc_gaz"
     }
 
-    if type_ == "table" and (name in ignored_tables or name.startswith("tiger")):
-        return False
-    return True
+    return not (type_ == "table" and (name in ignored_tables or name.startswith("tiger")))
 
 
 # Ensure context.configure includes: include_object=include_object

@@ -11,14 +11,13 @@ import tempfile
 import pytest
 import yaml
 
-from aqar_pipeline.config.loader import ChannelConfig, load_channels_config
+from aqar_pipeline.config.loader import load_channels_config
 from aqar_pipeline.utils.youtube import (
     VideoMetadata,
+    _parse_upload_date,
     extract_youtube_id,
     normalize_youtube_url,
-    _parse_upload_date,
 )
-
 
 # ═══════════════════════════════════════
 # YouTube URL Extraction
@@ -99,12 +98,11 @@ class TestParseDateUpload:
 class TestLoadChannelsConfig:
     """Tests for load_channels_config()."""
 
+    # Use the 'with' statement to ensure the file closes automatically
     def _write_config(self, data: dict) -> str:
-        """Write a temporary YAML config file and return the path."""
-        f = tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False)
-        yaml.dump(data, f)
-        f.close()
-        return f.name
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            yaml.dump(data, f)
+            return f.name
 
     def test_loads_valid_config(self):
         path = self._write_config({
@@ -208,7 +206,7 @@ class TestDurationFiltering:
     def test_zero_duration_is_accepted(self):
         """A video with zero duration (live/unknown) should pass."""
         max_seconds = 30 * 60
-        assert 0 <= max_seconds
+        assert max_seconds >= 0
 
 
 # ═══════════════════════════════════════

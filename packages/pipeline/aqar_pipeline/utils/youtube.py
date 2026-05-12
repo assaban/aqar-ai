@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import yt_dlp
 
@@ -68,7 +68,7 @@ def _parse_upload_date(date_str: str | None) -> datetime | None:
     if not date_str:
         return None
     try:
-        return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+        return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
     except ValueError:
         return None
 
