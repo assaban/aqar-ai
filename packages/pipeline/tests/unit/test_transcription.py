@@ -6,7 +6,6 @@ and Whisper configuration. Does NOT test actual Whisper inference
 (that requires the model to be loaded).
 """
 
-
 from aqar_pipeline.stages.transcription import (
     _calculate_confidence,
     _extract_segments,
