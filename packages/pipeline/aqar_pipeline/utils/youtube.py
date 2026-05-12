@@ -141,24 +141,39 @@ def fetch_channel_videos(
                 if not video_id:
                     continue
 
-                results.append(VideoMetadata(
-                    external_id=video_id,
-                    url=normalize_youtube_url(video_id),
-                    title=entry.get("title", ""),
-                    description=entry.get("description", ""),
-                    channel_id=info.get("channel_id", entry.get("channel_id", "")),
-                    channel_name=info.get("channel", entry.get("channel", "")),
-                    duration_seconds=entry.get("duration") or 0,
-                    published_at=_parse_upload_date(entry.get("upload_date")),
-                    thumbnail_url=entry.get("thumbnail", ""),
-                    view_count=entry.get("view_count") or 0,
-                    raw_metadata={
-                        k: v for k, v in entry.items()
-                        if k in ("id", "title", "duration", "upload_date", "view_count",
-                                 "like_count", "channel_id", "channel", "thumbnail",
-                                 "categories", "tags", "description")
-                    },
-                ))
+                results.append(
+                    VideoMetadata(
+                        external_id=video_id,
+                        url=normalize_youtube_url(video_id),
+                        title=entry.get("title", ""),
+                        description=entry.get("description", ""),
+                        channel_id=info.get("channel_id", entry.get("channel_id", "")),
+                        channel_name=info.get("channel", entry.get("channel", "")),
+                        duration_seconds=entry.get("duration") or 0,
+                        published_at=_parse_upload_date(entry.get("upload_date")),
+                        thumbnail_url=entry.get("thumbnail", ""),
+                        view_count=entry.get("view_count") or 0,
+                        raw_metadata={
+                            k: v
+                            for k, v in entry.items()
+                            if k
+                            in (
+                                "id",
+                                "title",
+                                "duration",
+                                "upload_date",
+                                "view_count",
+                                "like_count",
+                                "channel_id",
+                                "channel",
+                                "thumbnail",
+                                "categories",
+                                "tags",
+                                "description",
+                            )
+                        },
+                    )
+                )
 
     except Exception as e:
         logger.error(f"Error fetching channel {channel_url}: {e}")
@@ -206,11 +221,26 @@ def fetch_video_metadata(video_url: str) -> VideoMetadata | None:
                 thumbnail_url=info.get("thumbnail", ""),
                 view_count=info.get("view_count") or 0,
                 raw_metadata={
-                    k: v for k, v in info.items()
-                    if k in ("id", "title", "duration", "upload_date", "view_count",
-                             "like_count", "channel_id", "channel", "thumbnail",
-                             "categories", "tags", "description", "uploader",
-                             "uploader_id", "webpage_url")
+                    k: v
+                    for k, v in info.items()
+                    if k
+                    in (
+                        "id",
+                        "title",
+                        "duration",
+                        "upload_date",
+                        "view_count",
+                        "like_count",
+                        "channel_id",
+                        "channel",
+                        "thumbnail",
+                        "categories",
+                        "tags",
+                        "description",
+                        "uploader",
+                        "uploader_id",
+                        "webpage_url",
+                    )
                 },
             )
 
@@ -259,8 +289,10 @@ def download_audio(
         ],
         "postprocessor_args": {
             "FFmpegExtractAudio": [
-                "-ar", str(sample_rate),
-                "-ac", "1",  # mono
+                "-ar",
+                str(sample_rate),
+                "-ac",
+                "1",  # mono
             ],
         },
     }
@@ -280,10 +312,7 @@ def download_audio(
             return False
 
         file_size = os.path.getsize(expected_path)
-        logger.info(
-            f"Audio downloaded: {expected_path} "
-            f"({file_size / (1024 * 1024):.1f} MB)"
-        )
+        logger.info(f"Audio downloaded: {expected_path} ({file_size / (1024 * 1024):.1f} MB)")
         return True
 
     except Exception as e:

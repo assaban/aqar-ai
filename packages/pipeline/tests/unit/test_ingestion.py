@@ -105,18 +105,20 @@ class TestLoadChannelsConfig:
             return f.name
 
     def test_loads_valid_config(self):
-        path = self._write_config({
-            "region": "tangier-tetouan",
-            "defaults": {"max_videos": 10},
-            "channels": [
-                {
-                    "name": "Test Channel",
-                    "channel_url": "https://www.youtube.com/@test",
-                    "max_videos": 15,
-                    "tags": ["tangier"],
-                },
-            ],
-        })
+        path = self._write_config(
+            {
+                "region": "tangier-tetouan",
+                "defaults": {"max_videos": 10},
+                "channels": [
+                    {
+                        "name": "Test Channel",
+                        "channel_url": "https://www.youtube.com/@test",
+                        "max_videos": 15,
+                        "tags": ["tangier"],
+                    },
+                ],
+            }
+        )
         config = load_channels_config(path)
         assert config.region == "tangier-tetouan"
         assert len(config.channels) == 1
@@ -125,26 +127,30 @@ class TestLoadChannelsConfig:
         os.unlink(path)
 
     def test_filters_disabled_channels(self):
-        path = self._write_config({
-            "region": "tangier-tetouan",
-            "channels": [
-                {"name": "Enabled", "channel_url": "https://yt.com/@a", "enabled": True},
-                {"name": "Disabled", "channel_url": "https://yt.com/@b", "enabled": False},
-            ],
-        })
+        path = self._write_config(
+            {
+                "region": "tangier-tetouan",
+                "channels": [
+                    {"name": "Enabled", "channel_url": "https://yt.com/@a", "enabled": True},
+                    {"name": "Disabled", "channel_url": "https://yt.com/@b", "enabled": False},
+                ],
+            }
+        )
         config = load_channels_config(path)
         assert len(config.channels) == 1
         assert config.channels[0].name == "Enabled"
         os.unlink(path)
 
     def test_applies_defaults(self):
-        path = self._write_config({
-            "region": "tangier-tetouan",
-            "defaults": {"max_videos": 25, "language_hint": "fr"},
-            "channels": [
-                {"name": "Default Channel", "channel_url": "https://yt.com/@ch"},
-            ],
-        })
+        path = self._write_config(
+            {
+                "region": "tangier-tetouan",
+                "defaults": {"max_videos": 25, "language_hint": "fr"},
+                "channels": [
+                    {"name": "Default Channel", "channel_url": "https://yt.com/@ch"},
+                ],
+            }
+        )
         config = load_channels_config(path)
         assert config.channels[0].max_videos == 25
         assert config.channels[0].language_hint == "fr"
@@ -155,22 +161,26 @@ class TestLoadChannelsConfig:
             load_channels_config("/nonexistent/path.yml")
 
     def test_empty_channels_returns_empty(self):
-        path = self._write_config({
-            "region": "tangier-tetouan",
-            "channels": [],
-        })
+        path = self._write_config(
+            {
+                "region": "tangier-tetouan",
+                "channels": [],
+            }
+        )
         config = load_channels_config(path)
         assert len(config.channels) == 0
         os.unlink(path)
 
     def test_skips_entries_without_url(self):
-        path = self._write_config({
-            "region": "tangier-tetouan",
-            "channels": [
-                {"name": "No URL"},
-                {"name": "Has URL", "channel_url": "https://yt.com/@ch"},
-            ],
-        })
+        path = self._write_config(
+            {
+                "region": "tangier-tetouan",
+                "channels": [
+                    {"name": "No URL"},
+                    {"name": "Has URL", "channel_url": "https://yt.com/@ch"},
+                ],
+            }
+        )
         config = load_channels_config(path)
         assert len(config.channels) == 1
         assert config.channels[0].name == "Has URL"
@@ -188,7 +198,7 @@ class TestDurationFiltering:
     def test_video_within_limit_is_accepted(self):
         """A 10-minute video should pass the 30-minute limit."""
         max_seconds = 30 * 60  # 1800
-        video_duration = 600   # 10 minutes
+        video_duration = 600  # 10 minutes
         assert video_duration <= max_seconds
 
     def test_video_exceeding_limit_is_rejected(self):

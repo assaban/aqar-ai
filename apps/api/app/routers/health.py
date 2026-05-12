@@ -66,7 +66,9 @@ async def readiness_check():
 
         async with httpx.AsyncClient() as client:
             resp = await client.get(f"{settings.meilisearch_url}/health", timeout=5.0)
-            services["meilisearch"] = "ok" if resp.status_code == 200 else f"error: {resp.status_code}"
+            services["meilisearch"] = (
+                "ok" if resp.status_code == 200 else f"error: {resp.status_code}"
+            )
     except Exception as e:
         services["meilisearch"] = f"error: {e}"
         logger.error("Meilisearch health check failed", error=str(e))

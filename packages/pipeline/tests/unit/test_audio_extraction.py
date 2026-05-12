@@ -65,7 +65,9 @@ class TestEnsureDownloadDir:
 # ═══════════════════════════════════════
 
 
-def _create_test_wav(path: str, sample_rate: int = 16000, channels: int = 1, duration_s: float = 1.0):
+def _create_test_wav(
+    path: str, sample_rate: int = 16000, channels: int = 1, duration_s: float = 1.0
+):
     """Helper: create a minimal valid WAV file."""
     n_frames = int(sample_rate * duration_s)
     with wave.open(path, "wb") as wf:

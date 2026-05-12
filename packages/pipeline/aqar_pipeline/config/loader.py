@@ -47,9 +47,7 @@ def load_channels_config(config_path: str | None = None) -> DiscoveryConfig:
         DiscoveryConfig with all enabled channels.
     """
     if config_path is None:
-        config_path = os.path.join(
-            os.path.dirname(__file__), "channels.yml"
-        )
+        config_path = os.path.join(os.path.dirname(__file__), "channels.yml")
 
     path = Path(config_path)
     if not path.exists():

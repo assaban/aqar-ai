@@ -81,9 +81,7 @@ def extract_audio(self, video_source_id: str):
 
         # Load the processing job
         job = session.execute(
-            select(ProcessingJob).where(
-                ProcessingJob.video_source_id == video.id
-            )
+            select(ProcessingJob).where(ProcessingJob.video_source_id == video.id)
         ).scalar_one_or_none()
 
         if not job:
@@ -123,7 +121,8 @@ def extract_audio(self, video_source_id: str):
 
         if not success:
             _update_job_failure(
-                session, job,
+                session,
+                job,
                 stage="audio_extraction",
                 message=f"Failed to download audio from {video.url}",
             )
@@ -135,7 +134,8 @@ def extract_audio(self, video_source_id: str):
         audio_info = validate_wav_file(audio_path)
         if not audio_info:
             _update_job_failure(
-                session, job,
+                session,
+                job,
                 stage="audio_extraction",
                 message=f"Downloaded file is not a valid WAV: {audio_path}",
             )
@@ -168,7 +168,8 @@ def extract_audio(self, video_source_id: str):
     except self.MaxRetriesExceededError:
         logger.error(f"Max retries exceeded for video: {video_source_id}")
         _update_job_failure(
-            session, job,
+            session,
+            job,
             stage="audio_extraction",
             message="Max retries exceeded for audio extraction",
         )

@@ -19,7 +19,7 @@ DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH", "/tmp/aqar/downloads")
 
 # Whisper-optimal audio settings
 TARGET_SAMPLE_RATE = 16000  # 16kHz
-TARGET_CHANNELS = 1         # Mono
+TARGET_CHANNELS = 1  # Mono
 
 
 @dataclass
