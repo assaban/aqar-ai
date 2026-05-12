@@ -8,6 +8,7 @@ Handles channel scanning, video info extraction, and URL normalization.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -140,24 +141,39 @@ def fetch_channel_videos(
                 if not video_id:
                     continue
 
-                results.append(VideoMetadata(
-                    external_id=video_id,
-                    url=normalize_youtube_url(video_id),
-                    title=entry.get("title", ""),
-                    description=entry.get("description", ""),
-                    channel_id=info.get("channel_id", entry.get("channel_id", "")),
-                    channel_name=info.get("channel", entry.get("channel", "")),
-                    duration_seconds=entry.get("duration") or 0,
-                    published_at=_parse_upload_date(entry.get("upload_date")),
-                    thumbnail_url=entry.get("thumbnail", ""),
-                    view_count=entry.get("view_count") or 0,
-                    raw_metadata={
-                        k: v for k, v in entry.items()
-                        if k in ("id", "title", "duration", "upload_date", "view_count",
-                                 "like_count", "channel_id", "channel", "thumbnail",
-                                 "categories", "tags", "description")
-                    },
-                ))
+                results.append(
+                    VideoMetadata(
+                        external_id=video_id,
+                        url=normalize_youtube_url(video_id),
+                        title=entry.get("title", ""),
+                        description=entry.get("description", ""),
+                        channel_id=info.get("channel_id", entry.get("channel_id", "")),
+                        channel_name=info.get("channel", entry.get("channel", "")),
+                        duration_seconds=entry.get("duration") or 0,
+                        published_at=_parse_upload_date(entry.get("upload_date")),
+                        thumbnail_url=entry.get("thumbnail", ""),
+                        view_count=entry.get("view_count") or 0,
+                        raw_metadata={
+                            k: v
+                            for k, v in entry.items()
+                            if k
+                            in (
+                                "id",
+                                "title",
+                                "duration",
+                                "upload_date",
+                                "view_count",
+                                "like_count",
+                                "channel_id",
+                                "channel",
+                                "thumbnail",
+                                "categories",
+                                "tags",
+                                "description",
+                            )
+                        },
+                    )
+                )
 
     except Exception as e:
         logger.error(f"Error fetching channel {channel_url}: {e}")
@@ -205,14 +221,100 @@ def fetch_video_metadata(video_url: str) -> VideoMetadata | None:
                 thumbnail_url=info.get("thumbnail", ""),
                 view_count=info.get("view_count") or 0,
                 raw_metadata={
-                    k: v for k, v in info.items()
-                    if k in ("id", "title", "duration", "upload_date", "view_count",
-                             "like_count", "channel_id", "channel", "thumbnail",
-                             "categories", "tags", "description", "uploader",
-                             "uploader_id", "webpage_url")
+                    k: v
+                    for k, v in info.items()
+                    if k
+                    in (
+                        "id",
+                        "title",
+                        "duration",
+                        "upload_date",
+                        "view_count",
+                        "like_count",
+                        "channel_id",
+                        "channel",
+                        "thumbnail",
+                        "categories",
+                        "tags",
+                        "description",
+                        "uploader",
+                        "uploader_id",
+                        "webpage_url",
+                    )
                 },
             )
 
     except Exception as e:
         logger.error(f"Error fetching video metadata for {video_url}: {e}")
         return None
+
+
+def download_audio(
+    video_url: str,
+    output_path: str,
+    sample_rate: int = 16000,
+) -> bool:
+    """
+    Download audio from a YouTube video and convert to WAV.
+
+    Uses yt-dlp to extract the best audio stream, then FFmpeg
+    to convert to WAV format (16kHz mono) optimized for Whisper.
+
+    Args:
+        video_url: YouTube video URL.
+        output_path: Full path for the output WAV file (without extension,
+                     yt-dlp will add it, or with .wav which we handle).
+        sample_rate: Target sample rate in Hz (default 16000 for Whisper).
+
+    Returns:
+        True if download and conversion succeeded, False otherwise.
+    """
+    # yt-dlp expects output template without extension for postprocessor
+    # Remove .wav if present since FFmpeg postprocessor adds it
+    output_template = output_path
+    if output_template.endswith(".wav"):
+        output_template = output_template[:-4]
+
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "no_color": True,
+        "format": "bestaudio/best",
+        "outtmpl": output_template + ".%(ext)s",
+        "postprocessors": [
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "wav",
+            }
+        ],
+        "postprocessor_args": {
+            "FFmpegExtractAudio": [
+                "-ar",
+                str(sample_rate),
+                "-ac",
+                "1",  # mono
+            ],
+        },
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            result = ydl.download([video_url])
+
+            if result != 0:
+                logger.error(f"yt-dlp returned non-zero exit code: {result}")
+                return False
+
+        # Verify the output file exists
+        expected_path = output_template + ".wav"
+        if not os.path.exists(expected_path):
+            logger.error(f"Expected output not found: {expected_path}")
+            return False
+
+        file_size = os.path.getsize(expected_path)
+        logger.info(f"Audio downloaded: {expected_path} ({file_size / (1024 * 1024):.1f} MB)")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error downloading audio from {video_url}: {e}")
+        return False

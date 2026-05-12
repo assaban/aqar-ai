@@ -283,12 +283,16 @@ def retry_failed_jobs():
 
     try:
         # Find failed jobs that can be retried
-        failed_jobs = session.execute(
-            select(ProcessingJob).where(
-                ProcessingJob.status == ProcessingStatus.FAILED,
-                ProcessingJob.retry_count < ProcessingJob.max_retries,
+        failed_jobs = (
+            session.execute(
+                select(ProcessingJob).where(
+                    ProcessingJob.status == ProcessingStatus.FAILED,
+                    ProcessingJob.retry_count < ProcessingJob.max_retries,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         retried = 0
         for job in failed_jobs:
@@ -299,9 +303,7 @@ def retry_failed_jobs():
             job.error_traceback = None
             retried += 1
 
-            logger.info(
-                f"Retrying job {job.id} (attempt {job.retry_count}/{job.max_retries})"
-            )
+            logger.info(f"Retrying job {job.id} (attempt {job.retry_count}/{job.max_retries})")
 
         session.commit()
 

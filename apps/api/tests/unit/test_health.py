@@ -11,9 +11,7 @@ from apps.api.app.main import app
 @pytest.mark.asyncio
 async def test_health_check_returns_ok():
     """GET /health should return status ok."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/health")
 
     assert response.status_code == 200
@@ -25,9 +23,7 @@ async def test_health_check_returns_ok():
 @pytest.mark.asyncio
 async def test_health_check_contains_environment():
     """GET /health should include environment info."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/health")
 
     data = response.json()

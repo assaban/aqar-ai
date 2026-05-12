@@ -41,6 +41,7 @@ app.conf.update(
     # Queue routing
     task_routes={
         "aqar_pipeline.stages.ingestion.*": {"queue": "ingestion"},
+        "aqar_pipeline.stages.audio_extraction.*": {"queue": "ingestion"},
         "aqar_pipeline.stages.transcription.*": {"queue": "transcription"},
         "aqar_pipeline.stages.extraction.*": {"queue": "extraction"},
         "aqar_pipeline.stages.geocoding.*": {"queue": "geocoding"},
