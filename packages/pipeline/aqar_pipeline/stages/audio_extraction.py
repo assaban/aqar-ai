@@ -90,10 +90,12 @@ def extract_audio(self, video_source_id: str):
             audio_info = validate_wav_file(audio_path)
             if audio_info and audio_info.duration_seconds > 0:
                 logger.info(f"Audio already exists, skipping download: {audio_path}")
-                manager.complete_stage(metadata={
-                    "cached": True,
-                    "duration_seconds": audio_info.duration_seconds,
-                })
+                manager.complete_stage(
+                    metadata={
+                        "cached": True,
+                        "duration_seconds": audio_info.duration_seconds,
+                    }
+                )
                 return {
                     "status": "completed",
                     "audio_path": audio_path,
@@ -130,12 +132,14 @@ def extract_audio(self, video_source_id: str):
             )
 
         # Complete the stage
-        manager.complete_stage(metadata={
-            "duration_seconds": audio_info.duration_seconds,
-            "file_size_mb": round(audio_info.file_size_bytes / (1024 * 1024), 2),
-            "sample_rate": audio_info.sample_rate,
-            "channels": audio_info.channels,
-        })
+        manager.complete_stage(
+            metadata={
+                "duration_seconds": audio_info.duration_seconds,
+                "file_size_mb": round(audio_info.file_size_bytes / (1024 * 1024), 2),
+                "sample_rate": audio_info.sample_rate,
+                "channels": audio_info.channels,
+            }
+        )
 
         logger.info(
             f"Audio extraction complete: {audio_path} "

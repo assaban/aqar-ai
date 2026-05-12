@@ -59,7 +59,7 @@ VALID_TRANSITIONS: dict[ProcessingStatus, list[ProcessingStatus]] = {
         ProcessingStatus.PENDING,  # retry resets to PENDING
     ],
     ProcessingStatus.COMPLETED: [],  # terminal state
-    ProcessingStatus.SKIPPED: [],    # terminal state
+    ProcessingStatus.SKIPPED: [],  # terminal state
 }
 
 # Maps stage name to the status set when starting that stage
@@ -73,7 +73,7 @@ STAGE_STATUS_MAP: dict[str, ProcessingStatus] = {
 
 # Maps stage name to the next status after successful completion
 STAGE_COMPLETION_MAP: dict[str, ProcessingStatus] = {
-    "ingestion": ProcessingStatus.INGESTING,       # stays INGESTING, audio_extraction continues
+    "ingestion": ProcessingStatus.INGESTING,  # stays INGESTING, audio_extraction continues
     "audio_extraction": ProcessingStatus.TRANSCRIBING,
     "transcription": ProcessingStatus.EXTRACTING,
     "extraction": ProcessingStatus.GEOCODING,
@@ -83,6 +83,7 @@ STAGE_COMPLETION_MAP: dict[str, ProcessingStatus] = {
 
 class InvalidTransitionError(Exception):
     """Raised when a state transition is not allowed."""
+
     pass
 
 
@@ -113,9 +114,7 @@ class JobManager:
         """Lazy-load and cache the ProcessingJob."""
         if self._job is None:
             self._job = self.session.execute(
-                select(ProcessingJob).where(
-                    ProcessingJob.video_source_id == self.video_source_id
-                )
+                select(ProcessingJob).where(ProcessingJob.video_source_id == self.video_source_id)
             ).scalar_one_or_none()
 
             if self._job is None:
@@ -169,8 +168,7 @@ class JobManager:
         self.session.commit()
 
         logger.info(
-            f"Stage started: {stage_name} "
-            f"(job={self.job.id}, status={self.job.status.value})"
+            f"Stage started: {stage_name} (job={self.job.id}, status={self.job.status.value})"
         )
 
     def complete_stage(self, metadata: dict | None = None):
@@ -250,9 +248,7 @@ class JobManager:
 
         self.session.commit()
 
-        logger.error(
-            f"Stage failed: {stage} (job={self.job.id}, error={message})"
-        )
+        logger.error(f"Stage failed: {stage} (job={self.job.id}, error={message})")
 
         self._current_stage = None
         self._stage_start_time = None

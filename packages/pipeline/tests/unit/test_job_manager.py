@@ -5,7 +5,6 @@ Tests cover: valid transitions, invalid transitions, timing recording,
 error capture, and stage metadata storage.
 """
 
-
 from aqar_pipeline.utils.job_manager import (
     STAGE_COMPLETION_MAP,
     STAGE_STATUS_MAP,
@@ -113,12 +112,24 @@ class TestStageMaps:
     """Tests for stage-to-status mapping tables."""
 
     def test_all_stages_have_status_map(self):
-        expected_stages = ["ingestion", "audio_extraction", "transcription", "extraction", "geocoding"]
+        expected_stages = [
+            "ingestion",
+            "audio_extraction",
+            "transcription",
+            "extraction",
+            "geocoding",
+        ]
         for stage in expected_stages:
             assert stage in STAGE_STATUS_MAP, f"Missing STAGE_STATUS_MAP entry for: {stage}"
 
     def test_all_stages_have_completion_map(self):
-        expected_stages = ["ingestion", "audio_extraction", "transcription", "extraction", "geocoding"]
+        expected_stages = [
+            "ingestion",
+            "audio_extraction",
+            "transcription",
+            "extraction",
+            "geocoding",
+        ]
         for stage in expected_stages:
             assert stage in STAGE_COMPLETION_MAP, f"Missing STAGE_COMPLETION_MAP entry for: {stage}"
 

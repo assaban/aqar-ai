@@ -227,9 +227,13 @@ def ingest_video(self, video_url: str, job_id: str | None = None):
         session.add(video_source)
         session.flush()
 
-        job = session.execute(
-            select(ProcessingJob).where(ProcessingJob.id == job_id)
-        ).scalar_one_or_none() if job_id else None
+        job = (
+            session.execute(
+                select(ProcessingJob).where(ProcessingJob.id == job_id)
+            ).scalar_one_or_none()
+            if job_id
+            else None
+        )
 
         if not job:
             job = ProcessingJob(video_source_id=video_source.id, status=ProcessingStatus.PENDING)
@@ -251,6 +255,7 @@ def ingest_video(self, video_url: str, job_id: str | None = None):
     finally:
         session.close()
 
+
 @shared_task(
     name="aqar_pipeline.stages.ingestion.retry_failed_jobs",
     queue="ingestion",
@@ -266,12 +271,16 @@ def retry_failed_jobs():
 
     try:
         # Find failed jobs that can be retried
-        failed_jobs = session.execute(
-            select(ProcessingJob).where(
-                ProcessingJob.status == ProcessingStatus.FAILED,
-                ProcessingJob.retry_count < ProcessingJob.max_retries,
+        failed_jobs = (
+            session.execute(
+                select(ProcessingJob).where(
+                    ProcessingJob.status == ProcessingStatus.FAILED,
+                    ProcessingJob.retry_count < ProcessingJob.max_retries,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         retried = 0
         for job in failed_jobs:
@@ -282,9 +291,7 @@ def retry_failed_jobs():
             job.error_traceback = None
             retried += 1
 
-            logger.info(
-                f"Retrying job {job.id} (attempt {job.retry_count}/{job.max_retries})"
-            )
+            logger.info(f"Retrying job {job.id} (attempt {job.retry_count}/{job.max_retries})")
 
         session.commit()
 

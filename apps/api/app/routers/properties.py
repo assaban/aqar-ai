@@ -48,9 +48,7 @@ async def list_properties(
     """
     # Build query
     query = (
-        select(Property)
-        .options(joinedload(Property.location))
-        .where(Property.is_published == True)  # noqa: E712
+        select(Property).options(joinedload(Property.location)).where(Property.is_published == True)  # noqa: E712
     )
 
     # Apply filters
@@ -108,9 +106,7 @@ async def get_property(
 ):
     """Get a single property by ID with full details."""
     query = (
-        select(Property)
-        .options(joinedload(Property.location))
-        .where(Property.id == property_id)
+        select(Property).options(joinedload(Property.location)).where(Property.id == property_id)
     )
     result = await db.execute(query)
     property = result.unique().scalar_one_or_none()
@@ -130,14 +126,10 @@ async def get_stats(db: Annotated[AsyncSession, Depends(get_db)]):
         select(func.count(Property.id)).where(Property.is_published == True)  # noqa: E712
     )
     pending = await db.execute(
-        select(func.count(ProcessingJob.id)).where(
-            ProcessingJob.status == ProcessingStatus.PENDING
-        )
+        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.PENDING)
     )
     failed = await db.execute(
-        select(func.count(ProcessingJob.id)).where(
-            ProcessingJob.status == ProcessingStatus.FAILED
-        )
+        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.FAILED)
     )
     avg_conf = await db.execute(
         select(func.avg(Property.extraction_confidence)).where(

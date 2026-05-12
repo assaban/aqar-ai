@@ -22,8 +22,8 @@ router = APIRouter()
 
 @router.post("/pipeline/submit", response_model=PipelineStatusResponse)
 async def submit_video(
-        db: Annotated[AsyncSession, Depends(get_db)],
-        request: PipelineSubmitRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    request: PipelineSubmitRequest,
 ):
     """
     Submit a video URL for processing through the AI pipeline.
@@ -32,9 +32,7 @@ async def submit_video(
     url = request.url.strip()
 
     # Check for duplicates
-    existing = await db.execute(
-        select(VideoSource).where(VideoSource.url == url)
-    )
+    existing = await db.execute(select(VideoSource).where(VideoSource.url == url))
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=409,
@@ -85,14 +83,11 @@ async def submit_video(
 
 @router.get("/pipeline/status/{job_id}", response_model=PipelineStatusResponse)
 async def get_pipeline_status(
-        db: Annotated[AsyncSession, Depends(get_db)],
-        job_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    job_id: uuid.UUID,
 ):
     """Check the processing status of a submitted video."""
-    query = (
-        select(ProcessingJob)
-        .where(ProcessingJob.id == job_id)
-    )
+    query = select(ProcessingJob).where(ProcessingJob.id == job_id)
     result = await db.execute(query)
     job = result.scalar_one_or_none()
 
@@ -100,9 +95,7 @@ async def get_pipeline_status(
         raise HTTPException(status_code=404, detail="Processing job not found")
 
     # Get the video URL
-    video = await db.execute(
-        select(VideoSource).where(VideoSource.id == job.video_source_id)
-    )
+    video = await db.execute(select(VideoSource).where(VideoSource.id == job.video_source_id))
     video_source = video.scalar_one()
 
     return PipelineStatusResponse(
@@ -137,8 +130,8 @@ def _extract_youtube_id(url: str) -> str:
 # apps/api/app/routers/pipeline.py
 @router.get("/pipeline/jobs", response_model=list[PipelineStatusResponse])
 async def list_all_jobs(
-        db: Annotated[AsyncSession, Depends(get_db)],
-        limit: int = 10,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 10,
 ):
     """Retrieve the most recent processing jobs."""
     result = await db.execute(
