@@ -207,8 +207,6 @@ class JobManager:
 
         self.session.commit()
 
-        self.session.commit()
-
         logger.info(
             f"Stage completed: {self._current_stage} "
             f"(elapsed={elapsed}s, job={self.job.id}, status={self.job.status.value})"
