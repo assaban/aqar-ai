@@ -80,6 +80,7 @@ jobs:
 
       - name: Run unit tests
         env:
+          PYTHONPATH: ${{ github.workspace }}
           DATABASE_URL: postgresql+asyncpg://aqar_test:test_password@localhost:5432/aqar_test_db
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
@@ -89,6 +90,7 @@ jobs:
 
       - name: Run integration tests
         env:
+          PYTHONPATH: ${{ github.workspace }}
           DATABASE_URL: postgresql+asyncpg://aqar_test:test_password@localhost:5432/aqar_test_db
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
