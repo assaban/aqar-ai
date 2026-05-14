@@ -68,13 +68,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - POSTGRES_HOST=db
-      - REDIS_HOST=redis
-      - MEILISEARCH_HOST=meilisearch
       - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
+      - DATABASE_URL_SYNC=postgresql://aqar:aqar_dev_password@db:5432/aqar_db
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - MEILISEARCH_URL=http://meilisearch:7700
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -103,13 +103,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      - POSTGRES_HOST=db
-      - REDIS_HOST=redis
-      - MEILISEARCH_HOST=meilisearch
-      - DATABASE_URL=postgresql+asyncpg://aqar:aqar_dev_password@db:5432/aqar_db
-      - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app/packages  # <── ADD THIS to find the 'prompts' folder
+      - OLLAMA_MODEL=gemma3:4b    # <── FIX THIS (was gemma3 in your logs)
+      - DATABASE_URL_SYNC=postgresql://aqar:aqar_dev_password@db:5432/aqar_db
       - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - MEILISEARCH_URL=http://meilisearch:7700
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
     volumes:
       - ./apps/api:/app/apps/api
       - ./packages:/app/packages
@@ -122,8 +122,27 @@ services:
     command: >
       celery -A packages.pipeline.aqar_pipeline.celery_app worker
       --loglevel=info
-      --concurrency=2
+      --concurrency=6
       --queues=ingestion,transcription,extraction,geocoding
+
+  # ── Next.js Web Portal ──
+  web:
+    image: node:22-alpine
+    container_name: aqar-web
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_MEILISEARCH_URL=http://localhost:7700
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - api
 
   # ── Celery Beat (Scheduled Tasks) ──
   beat:
@@ -135,14 +154,19 @@ services:
     env_file: .env
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DATABASE_URL_SYNC=postgresql://aqar:aqar_dev_password@db:5432/aqar_db #
     volumes:
       - ./packages:/app/packages
     depends_on:
       redis:
         condition: service_healthy
+      db: # <── Ensure it waits for the DB too
+        condition: service_healthy
     command: >
       celery -A packages.pipeline.aqar_pipeline.celery_app beat
       --loglevel=info
+      --schedule=/tmp/celerybeat-schedule
 
   # ── Flower (Celery Monitoring) ──
   flower:
@@ -151,6 +175,7 @@ services:
     restart: unless-stopped
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
     ports:
       - "5555:5555"
     depends_on:
@@ -158,19 +183,19 @@ services:
         condition: service_healthy
 
   # ── Ollama (Local LLM Server) ──
-  ollama:
-    image: ollama/ollama:latest
-    container_name: aqar-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollamadata:/root/.ollama
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+#  ollama:
+#    image: ollama/ollama:latest
+#    container_name: aqar-ollama
+#    restart: unless-stopped
+#    ports:
+#      - "11434:11434"
+#    volumes:
+#      - ollamadata:/root/.ollama
+#    healthcheck:
+#      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
 
 volumes:
   pgdata:
@@ -181,5 +206,5 @@ volumes:
     driver: local
   downloads:
     driver: local
-  ollamadata:
-    driver: local
+#  ollamadata:
+#    driver: local

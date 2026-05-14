@@ -1,0 +1,7 @@
+{
+  "id": "sample_001",
+  "description": "Sample golden test case. Replace with real manually transcribed data from Tangier real estate videos.",
+  "video_url": "https://www.youtube.com/watch?v=EXAMPLE",
+  "reference": "هاد الشقة كاينة في حي إيبيريا فيها تلاتة ديال الغرف و صالون كبير المساحة خمسة و تمانين متر مربع الثمن سبعمية و خمسين ألف درهم",
+  "hypothesis": "هاد الشقة كاينة في حي إيبيريا فيها ثلاثة ديال الغرف و صالون كبير المساحة خمسة و ثمانين متر مربع الثمن سبعمائة و خمسين ألف درهم"
+}

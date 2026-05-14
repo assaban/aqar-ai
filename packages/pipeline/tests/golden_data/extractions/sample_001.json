@@ -1,0 +1,27 @@
+{
+  "id": "sample_001",
+  "description": "Sample golden extraction test case. Replace with real annotated data.",
+  "video_url": "https://www.youtube.com/watch?v=EXAMPLE",
+  "expected": {
+    "property_type": "apartment",
+    "listing_type": "sale",
+    "price": 750000,
+    "area_sqm": 85,
+    "rooms": 4,
+    "bedrooms": 3,
+    "bathrooms": 1,
+    "legal_status": "tabou",
+    "neighborhood": "Iberia"
+  },
+  "actual": {
+    "property_type": "apartment",
+    "listing_type": "sale",
+    "price": 750000,
+    "area_sqm": 85,
+    "rooms": 4,
+    "bedrooms": 3,
+    "bathrooms": 1,
+    "legal_status": "tabou",
+    "neighborhood": "Iberia"
+  }
+}
