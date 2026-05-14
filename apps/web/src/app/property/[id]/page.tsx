@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+// apps/web/app/property/[id]/page.tsx
+import { apiFetch } from "@/lib/api"; // Replace serverFetch
 import {
   formatPrice,
   formatArea,
@@ -9,58 +11,50 @@ import {
   LEGAL_STATUS_LABELS,
   getYouTubeEmbedUrl,
 } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import type { Property, VideoDetail } from "@/lib/api";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-async function getProperty(id: string) {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/properties/${id}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
-async function getVideo(videoSourceId: string) {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/videos/${videoSourceId}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
 export default async function PropertyDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const property = await getProperty(id);
+
+  const property = await apiFetch<Property>(`/api/v1/properties/${id}`, {
+    revalidate: 60,
+  });
 
   if (!property) notFound();
 
   const video = property.video_source_id
-    ? await getVideo(property.video_source_id)
+    ? await apiFetch<VideoDetail>(
+        `/api/v1/videos/${property.video_source_id}`,
+        { revalidate: 60 }
+      )
     : null;
+
   const embedUrl = video?.url ? getYouTubeEmbedUrl(video.url) : null;
-  const typeLabel = PROPERTY_TYPE_LABELS[property.property_type] || property.property_type;
-  const listingLabel = LISTING_TYPE_LABELS[property.listing_type] || property.listing_type;
-  const legalLabel = LEGAL_STATUS_LABELS[property.legal_status] || property.legal_status;
+  const typeLabel =
+    PROPERTY_TYPE_LABELS[property.property_type] || property.property_type;
+  const listingLabel =
+    LISTING_TYPE_LABELS[property.listing_type] || property.listing_type;
+  const legalLabel =
+    LEGAL_STATUS_LABELS[property.legal_status] || property.legal_status;
+
+  // Build a summary from transcript or description
+  const summary = _buildSummary(property, video);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-sand-400">
-        <Link href="/" className="hover:text-aqar-500">Home</Link>
+        <Link href="/" className="hover:text-aqar-500">
+          Home
+        </Link>
         {" / "}
-        <Link href="/search" className="hover:text-aqar-500">Search</Link>
+        <Link href="/search" className="hover:text-aqar-500">
+          Search
+        </Link>
         {" / "}
         <span className="text-sand-700">{typeLabel}</span>
       </nav>
@@ -106,13 +100,30 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                   allowFullScreen
                 />
               </div>
+              {video?.title && (
+                <div className="bg-sand-50 px-4 py-2.5 text-sm text-sand-600">
+                  {video.title}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Summary */}
+          {summary && (
+            <div className="rounded-xl border border-sea-200 bg-sea-50 p-6">
+              <h2 className="mb-2 text-sm font-semibold text-sea-700">
+                AI Summary
+              </h2>
+              <p className="leading-relaxed text-sand-700">{summary}</p>
             </div>
           )}
 
           {/* Description */}
           {property.description_generated && (
             <div className="rounded-xl border border-sand-200 bg-white p-6">
-              <h2 className="mb-3 text-lg font-semibold text-sand-900">Description</h2>
+              <h2 className="mb-3 text-lg font-semibold text-sand-900">
+                Description
+              </h2>
               <p className="leading-relaxed text-sand-600">
                 {property.description_generated}
               </p>
@@ -121,61 +132,58 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
           {/* Attributes grid */}
           <div className="rounded-xl border border-sand-200 bg-white p-6">
-            <h2 className="mb-4 text-lg font-semibold text-sand-900">Details</h2>
+            <h2 className="mb-4 text-lg font-semibold text-sand-900">
+              Details
+            </h2>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {property.area_sqm && (
-                <div>
-                  <p className="text-xs text-sand-400">Area</p>
-                  <p className="text-base font-semibold text-sand-800">{formatArea(property.area_sqm)}</p>
-                </div>
+                <DetailItem label="Area" value={formatArea(property.area_sqm)} />
               )}
               {property.rooms && (
-                <div>
-                  <p className="text-xs text-sand-400">Rooms</p>
-                  <p className="text-base font-semibold text-sand-800">{property.rooms}</p>
-                </div>
+                <DetailItem label="Rooms" value={String(property.rooms)} />
               )}
               {property.bedrooms && (
-                <div>
-                  <p className="text-xs text-sand-400">Bedrooms</p>
-                  <p className="text-base font-semibold text-sand-800">{property.bedrooms}</p>
-                </div>
+                <DetailItem label="Bedrooms" value={String(property.bedrooms)} />
               )}
               {property.bathrooms && (
-                <div>
-                  <p className="text-xs text-sand-400">Bathrooms</p>
-                  <p className="text-base font-semibold text-sand-800">{property.bathrooms}</p>
-                </div>
+                <DetailItem label="Bathrooms" value={String(property.bathrooms)} />
               )}
               {property.floors && (
-                <div>
-                  <p className="text-xs text-sand-400">Floors</p>
-                  <p className="text-base font-semibold text-sand-800">{property.floors}</p>
-                </div>
+                <DetailItem label="Floors" value={String(property.floors)} />
               )}
               {property.floor_number != null && (
-                <div>
-                  <p className="text-xs text-sand-400">Floor</p>
-                  <p className="text-base font-semibold text-sand-800">
-                    {property.floor_number === 0 ? "Ground" : property.floor_number}
-                  </p>
-                </div>
+                <DetailItem
+                  label="Floor"
+                  value={property.floor_number === 0 ? "Ground" : String(property.floor_number)}
+                />
               )}
             </div>
 
             {/* Amenities */}
             <div className="mt-4 flex flex-wrap gap-2">
-              {property.has_garage && (
-                <span className="rounded-full bg-sand-100 px-3 py-1 text-xs text-sand-600">🚗 Garage</span>
-              )}
-              {property.has_garden && (
-                <span className="rounded-full bg-sand-100 px-3 py-1 text-xs text-sand-600">🌿 Garden</span>
-              )}
-              {property.has_elevator && (
-                <span className="rounded-full bg-sand-100 px-3 py-1 text-xs text-sand-600">🛗 Elevator</span>
-              )}
+              {property.has_garage && <AmenityBadge icon="🚗" label="Garage" />}
+              {property.has_garden && <AmenityBadge icon="🌿" label="Garden" />}
+              {property.has_elevator && <AmenityBadge icon="🛗" label="Elevator" />}
             </div>
           </div>
+
+          {/* Transcript excerpt */}
+          {video?.transcript_text && (
+            <div className="rounded-xl border border-sand-200 bg-white p-6">
+              <h2 className="mb-3 text-lg font-semibold text-sand-900">
+                Original Transcript
+              </h2>
+              <p className="text-sm leading-relaxed text-sand-500 line-clamp-6" dir="auto">
+                {video.transcript_text}
+              </p>
+              {video.transcript_language && (
+                <p className="mt-2 text-xs text-sand-400">
+                  Language: {video.transcript_language} | Confidence:{" "}
+                  {formatConfidence(video.transcript_confidence)}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -194,7 +202,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
           {/* Confidence indicator */}
           {property.extraction_confidence != null && (
             <div className="rounded-xl border border-sand-200 bg-white p-6">
-              <p className="mb-2 text-sm font-medium text-sand-700">Data Confidence</p>
+              <p className="mb-2 text-sm font-medium text-sand-700">
+                Data Confidence
+              </p>
               <div className="mb-2 h-2 overflow-hidden rounded-full bg-sand-100">
                 <div
                   className={`h-full rounded-full transition-all ${
@@ -204,7 +214,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                         ? "bg-amber-400"
                         : "bg-red-400"
                   }`}
-                  style={{ width: `${property.extraction_confidence * 100}%` }}
+                  style={{
+                    width: `${property.extraction_confidence * 100}%`,
+                  }}
                 />
               </div>
               <p className="text-xs text-sand-400">
@@ -217,12 +229,16 @@ export default async function PropertyDetailPage({ params }: PageProps) {
           {/* Source video info */}
           {video && (
             <div className="rounded-xl border border-sand-200 bg-white p-6">
-              <p className="mb-2 text-sm font-medium text-sand-700">Source Video</p>
+              <p className="mb-2 text-sm font-medium text-sand-700">
+                Source Video
+              </p>
               <p className="text-sm text-sand-600">
                 {video.channel_name || "Unknown channel"}
               </p>
               {video.title && (
-                <p className="mt-1 text-xs text-sand-400 line-clamp-2">{video.title}</p>
+                <p className="mt-1 text-xs text-sand-400 line-clamp-2">
+                  {video.title}
+                </p>
               )}
               <a
                 href={video.url}
@@ -234,8 +250,60 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               </a>
             </div>
           )}
+
+          {/* Pipeline info */}
+          {video?.stage_timings && (
+            <div className="rounded-xl border border-sand-200 bg-white p-6">
+              <p className="mb-2 text-sm font-medium text-sand-700">
+                Processing Info
+              </p>
+              <div className="space-y-1 text-xs text-sand-500">
+                {Object.entries(video.stage_timings).map(([stage, time]) => (
+                  <div key={stage} className="flex justify-between">
+                    <span className="capitalize">{stage.replace("_", " ")}</span>
+                    <span>{(time as number).toFixed(1)}s</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-sand-400">{label}</p>
+      <p className="text-base font-semibold text-sand-800">{value}</p>
+    </div>
+  );
+}
+
+function AmenityBadge({ icon, label }: { icon: string; label: string }) {
+  return (
+    <span className="rounded-full bg-sand-100 px-3 py-1 text-xs text-sand-600">
+      {icon} {label}
+    </span>
+  );
+}
+
+function _buildSummary(
+  property: Property,
+  video: VideoDetail | null
+): string | null {
+  // Use the generated description as primary summary
+  if (property.description_generated) {
+    return property.description_generated;
+  }
+
+  // Fall back to first 200 chars of transcript
+  if (video?.transcript_text) {
+    const text = video.transcript_text.substring(0, 200).trim();
+    return text.length >= 50 ? text + "..." : null;
+  }
+
+  return null;
 }

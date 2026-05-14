@@ -58,21 +58,56 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
         region: Region filter (matches channels.yml region field).
         config_path: Optional path to channels.yml. Uses default if None.
     """
-    from aqar_pipeline.config.loader import load_channels_config
+    from aqar_pipeline.config.loader import load_channels_config, ChannelConfig
     from aqar_pipeline.stages.audio_extraction import extract_audio
     from aqar_pipeline.utils.youtube import fetch_channel_videos
 
     logger.info(f"Starting video discovery for region: {region}")
 
+    # Load channels from YAML config
+    yaml_channels = []
     try:
         config = load_channels_config(config_path)
+        if config.region == region:
+            yaml_channels = config.channels
     except (FileNotFoundError, ValueError) as e:
-        logger.error(f"Failed to load channel config: {e}")
-        return {"status": "error", "message": str(e)}
+        logger.warning(f"Could not load YAML channel config: {e}")
 
-    if config.region != region:
-        logger.info(f"Config region '{config.region}' does not match '{region}', skipping")
-        return {"status": "skipped", "reason": "region_mismatch"}
+    # Load approved channels from database
+    db_channels = []
+    try:
+        from models.base import ChannelRegistration, ChannelStatus as ChStatus
+        db_result = session_for_channels = _get_sync_session()
+        from sqlalchemy import select as sa_select
+        result = session_for_channels.execute(
+            sa_select(ChannelRegistration).where(
+                ChannelRegistration.status == ChStatus.APPROVED,
+                ChannelRegistration.region == region,
+            )
+        )
+        for ch in result.scalars().all():
+            db_channels.append(ChannelConfig(
+                name=ch.channel_name or "DB Channel",
+                channel_url=ch.channel_url,
+                description=ch.description or "",
+                max_videos=ch.max_videos,
+            ))
+        session_for_channels.close()
+        logger.info(f"Loaded {len(db_channels)} approved channels from database")
+    except Exception as e:
+        logger.warning(f"Could not load channels from database: {e}")
+
+    # Combine both sources (dedup by URL)
+    seen_urls = set()
+    all_channels = []
+    for ch in yaml_channels + db_channels:
+        if ch.channel_url not in seen_urls:
+            seen_urls.add(ch.channel_url)
+            all_channels.append(ch)
+
+    if not all_channels:
+        logger.info("No channels to scan")
+        return {"status": "completed", "channels_scanned": 0, "new_videos": 0}
 
     # Statistics tracking restored [cite: 17]
     total_discovered = 0
@@ -84,7 +119,7 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
     session = _get_sync_session()
 
     try:
-        for channel in config.channels:
+        for channel in all_channels:
             logger.info(f"Scanning channel: {channel.name} ({channel.channel_url})")
 
             try:
@@ -160,7 +195,7 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
     summary = {
         "status": "completed",
         "region": region,
-        "channels_scanned": len(config.channels),
+        "channels_scanned": len(all_channels),
         "new_videos": total_discovered,
         "skipped_existing": total_skipped_existing,
         "skipped_duration": total_skipped_duration,

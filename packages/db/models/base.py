@@ -321,7 +321,7 @@ class Location(Base):
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     geom = mapped_column(
-        Geometry("POINT", srid=4326, spatial_index=False),  # Added spatial_index=False
+        Geometry("POINT", srid=4326),
         comment="PostGIS point geometry for spatial queries",
     )
 
@@ -351,7 +351,7 @@ class Location(Base):
     __table_args__ = (
         Index("ix_locations_city", "city"),
         Index("ix_locations_neighborhood", "neighborhood"),
-        Index("idx_locations_geom", "geom", postgresql_using="gist"),  # Stick to 'idx_' prefix
+        Index("ix_locations_geom", "geom", postgresql_using="gist"),
     )
 
     def __repr__(self) -> str:
@@ -417,3 +417,114 @@ class ProcessingJob(Base):
 
     def __repr__(self) -> str:
         return f"<ProcessingJob(id={self.id}, status={self.status}, stage={self.current_stage})>"
+
+
+# ═══════════════════════════════════════
+# Agent & Channel Registration
+# ═══════════════════════════════════════
+
+
+class ChannelStatus(str, enum.Enum):
+    """Approval status for registered channels."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    DISABLED = "disabled"
+
+
+class Agent(Base):
+    """
+    A real estate agent who registers channels for monitoring.
+    Can be self-registered or admin-created.
+    """
+
+    __tablename__ = "agents"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True)
+    phone: Mapped[str | None] = mapped_column(String(50))
+    company: Mapped[str | None] = mapped_column(String(255))
+    city: Mapped[str] = mapped_column(String(255), default="Tangier")
+    country: Mapped[str] = mapped_column(
+        String(255),
+        server_default="Morocco",  # 1. Sets it for existing rows in DB
+        default="Morocco"  # 2. Sets it for new Python objects
+    )
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    channels: Mapped[list["ChannelRegistration"]] = relationship(
+        back_populates="agent", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        Index("ix_agents_email", "email"),
+        Index("ix_agents_city", "city"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Agent(id={self.id}, name={self.name}, verified={self.is_verified})>"
+
+
+class ChannelRegistration(Base):
+    """
+    A YouTube channel registered for monitoring.
+    Requires admin approval before videos are processed.
+    """
+
+    __tablename__ = "channel_registrations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("agents.id", ondelete="SET NULL")
+    )
+    channel_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    channel_name: Mapped[str | None] = mapped_column(String(500))
+    channel_id: Mapped[str | None] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text)
+    region: Mapped[str] = mapped_column(String(255), default="tangier-tetouan")
+    status: Mapped[ChannelStatus] = mapped_column(
+        Enum(ChannelStatus), default=ChannelStatus.PENDING
+    )
+    max_videos: Mapped[int] = mapped_column(Integer, default=20)
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+
+    # Discovery metadata
+    discovered_via: Mapped[str | None] = mapped_column(
+        String(50), comment="manual | admin_search | agent_registration"
+    )
+    tags: Mapped[dict | None] = mapped_column(JSONB)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Relationships
+    agent: Mapped[Agent | None] = relationship(back_populates="channels")
+
+    __table_args__ = (
+        Index("ix_channel_registrations_status", "status"),
+        Index("ix_channel_registrations_region", "region"),
+        Index("ix_channel_registrations_channel_url", "channel_url"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ChannelRegistration(id={self.id}, channel={self.channel_name}, status={self.status})>"

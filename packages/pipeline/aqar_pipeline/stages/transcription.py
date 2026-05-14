@@ -50,15 +50,13 @@ def _extract_segments(result: dict) -> list[dict]:
     """
     segments = []
     for seg in result.get("segments", []):
-        segments.append(
-            {
-                "start": round(seg.get("start", 0.0), 2),
-                "end": round(seg.get("end", 0.0), 2),
-                "text": seg.get("text", "").strip(),
-                "avg_logprob": round(seg.get("avg_logprob", 0.0), 4),
-                "no_speech_prob": round(seg.get("no_speech_prob", 0.0), 4),
-            }
-        )
+        segments.append({
+            "start": round(seg.get("start", 0.0), 2),
+            "end": round(seg.get("end", 0.0), 2),
+            "text": seg.get("text", "").strip(),
+            "avg_logprob": round(seg.get("avg_logprob", 0.0), 4),
+            "no_speech_prob": round(seg.get("no_speech_prob", 0.0), 4),
+        })
     return segments
 
 
@@ -124,11 +122,6 @@ def transcribe_audio(self, video_source_id: str, audio_path: str):
 
     logger.info(f"Starting transcription for video: {video_source_id}")
 
-    # Verify audio file exists
-    if not os.path.exists(audio_path):
-        logger.error(f"Audio file not found: {audio_path}")
-        return {"status": "error", "message": f"Audio file not found: {audio_path}"}
-
     session = _get_sync_session()
 
     try:
@@ -156,30 +149,59 @@ def transcribe_audio(self, video_source_id: str, audio_path: str):
 
         # Initialize JobManager
         manager = JobManager(session, video_source_id)
-        manager.start_stage("transcription")
+        if not manager.start_stage("transcription"):
+            return {"status": "skipped", "reason": "already_completed"}
 
-        # Load Whisper model (cached singleton)
-        model = get_whisper_model()
+        # Strategy: Try YouTube subtitles first (faster, free), fall back to Whisper
+        from aqar_pipeline.utils.youtube import fetch_subtitles
 
-        # Transcribe
-        logger.info(f"Transcribing with Whisper ({WHISPER_MODEL}): {audio_path}")
-        start_time = time.time()
+        subtitle_data = fetch_subtitles(video.url)
+        used_youtube_subs = False
 
-        result = model.transcribe(
-            audio_path,
-            language=WHISPER_LANGUAGE,
-            task="transcribe",
-            verbose=False,
-        )
+        if subtitle_data and len(subtitle_data.text.strip()) > 50:
+            # YouTube subtitles available and substantial
+            logger.info(
+                f"Using YouTube {subtitle_data.source} subtitles ({subtitle_data.language}) "
+                f"for video: {video_source_id}"
+            )
+            full_text = subtitle_data.text
+            detected_language = subtitle_data.language
+            segments = subtitle_data.segments
+            # YouTube auto-generated subs have roughly 0.7 confidence,
+            # manual subs are higher
+            confidence = 0.85 if subtitle_data.source == "manual" else 0.65
+            transcription_source = f"youtube_{subtitle_data.source}"
+            transcription_time = 0.0
+            used_youtube_subs = True
+        else:
+            # Fall back to Whisper
+            logger.info(f"No usable YouTube subtitles, using Whisper ({WHISPER_MODEL}): {audio_path}")
 
-        transcription_time = round(time.time() - start_time, 2)
-        logger.info(f"Transcription completed in {transcription_time}s")
+            if not os.path.exists(audio_path):
+                manager.fail(
+                    stage="transcription",
+                    message=f"Audio file not found and no YouTube subtitles: {audio_path}",
+                )
+                return {"status": "error", "message": "No audio file and no subtitles available"}
 
-        # Extract data from result
-        full_text = result.get("text", "").strip()
-        detected_language = result.get("language", WHISPER_LANGUAGE)
-        segments = _extract_segments(result)
-        confidence = _calculate_confidence(segments)
+            from aqar_pipeline.utils.whisper_loader import get_whisper_model
+
+            model = get_whisper_model()
+            start_time = time.time()
+
+            result = model.transcribe(
+                audio_path,
+                language=WHISPER_LANGUAGE,
+                task="transcribe",
+                verbose=False,
+            )
+
+            transcription_time = round(time.time() - start_time, 2)
+            full_text = result.get("text", "").strip()
+            detected_language = result.get("language", WHISPER_LANGUAGE)
+            segments = _extract_segments(result)
+            confidence = _calculate_confidence(segments)
+            transcription_source = f"whisper_{WHISPER_MODEL}"
 
         # Normalize Darija text
         normalized_text = normalize_transcript(full_text)
@@ -191,29 +213,26 @@ def transcribe_audio(self, video_source_id: str, audio_path: str):
             language=detected_language,
             confidence=confidence,
             segments=segments,
-            whisper_model=WHISPER_MODEL,
+            whisper_model=transcription_source,
             processing_time_seconds=transcription_time,
         )
         session.add(transcript)
         session.flush()
 
         # Complete the stage
-        manager.complete_stage(
-            metadata={
-                "model": WHISPER_MODEL,
-                "language_detected": detected_language,
-                "confidence": confidence,
-                "segments_count": len(segments),
-                "text_length": len(normalized_text),
-                "processing_time_seconds": transcription_time,
-            }
-        )
+        manager.complete_stage(metadata={
+            "source": transcription_source,
+            "language_detected": detected_language,
+            "confidence": confidence,
+            "segments_count": len(segments),
+            "text_length": len(normalized_text),
+            "processing_time_seconds": transcription_time,
+            "used_youtube_subs": used_youtube_subs,
+        })
 
         logger.info(
-            f"Transcript saved: {len(normalized_text)} chars, "
-            f"{len(segments)} segments, "
-            f"confidence={confidence}, "
-            f"language={detected_language}"
+            f"Transcript saved ({transcription_source}): {len(normalized_text)} chars, "
+            f"{len(segments)} segments, confidence={confidence}, language={detected_language}"
         )
 
         # Cleanup audio file (no longer needed)

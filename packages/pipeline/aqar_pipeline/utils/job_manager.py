@@ -143,23 +143,31 @@ class JobManager:
         Mark the beginning of a pipeline stage.
 
         Sets the job status to the appropriate state and starts the timer.
+        If the job is already in a terminal state (COMPLETED, SKIPPED),
+        this is a no-op to handle Celery re-delivery gracefully.
 
         Args:
             stage_name: Name of the stage (e.g. "ingestion", "audio_extraction").
+
+        Returns:
+            True if the stage was started, False if skipped (terminal state).
         """
+        # Guard: skip if job is already in a terminal state
+        if self.job.status in (ProcessingStatus.COMPLETED, ProcessingStatus.SKIPPED):
+            logger.info(
+                f"Skipping stage {stage_name}: job already {self.job.status.value} "
+                f"(job={self.job.id})"
+            )
+            return False
+
         self._current_stage = stage_name
         self._stage_start_time = time.time()
 
         # Set status based on stage
         target_status = STAGE_STATUS_MAP.get(stage_name)
         if target_status and self.job.status != target_status:
-            try:
+            with contextlib.suppress(InvalidTransitionError):
                 self._set_status(target_status)
-            except InvalidTransitionError:
-                # If already in the target status (e.g. INGESTING for both
-                # ingestion and audio_extraction), that is fine
-                if self.job.status != target_status:
-                    raise
 
         self.job.current_stage = stage_name
         if self.job.started_at is None:
@@ -170,6 +178,7 @@ class JobManager:
         logger.info(
             f"Stage started: {stage_name} (job={self.job.id}, status={self.job.status.value})"
         )
+        return True
 
     def complete_stage(self, metadata: dict | None = None):
         """
@@ -252,12 +261,14 @@ class JobManager:
         self._stage_start_time = None
 
     def mark_completed(self):
-        """Mark the entire pipeline as completed."""
-        self._set_status(ProcessingStatus.COMPLETED)
-        self.job.completed_at = datetime.now(UTC)
+        """Mark the entire pipeline as completed. Safe to call multiple times."""
+        if self.job.status == ProcessingStatus.COMPLETED:
+            return
+        with contextlib.suppress(InvalidTransitionError):
+            self._set_status(ProcessingStatus.COMPLETED)
+        self.job.completed_at = self.job.completed_at or datetime.now(UTC)
         self.job.current_stage = None
         self.session.commit()
-
         logger.info(f"Pipeline completed (job={self.job.id})")
 
     def mark_skipped(self, reason: str):

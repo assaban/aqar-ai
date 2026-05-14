@@ -1,7 +1,10 @@
 """Aqar.ai Database Models."""
 
 from models.base import (
+    Agent,
     Base,
+    ChannelRegistration,
+    ChannelStatus,
     LegalStatus,
     ListingType,
     Location,
@@ -15,7 +18,10 @@ from models.base import (
 )
 
 __all__ = [
+    "Agent",
     "Base",
+    "ChannelRegistration",
+    "ChannelStatus",
     "LegalStatus",
     "ListingType",
     "Location",

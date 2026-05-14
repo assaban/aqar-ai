@@ -42,9 +42,16 @@ export default function PropertyCard({ property }: PropertyCardProps) {
 
         {/* Location */}
         {property.location && (
-          <p className="mb-3 text-sm text-sand-500">
+          <p className="mb-2 text-sm text-sand-500">
             📍 {property.location.neighborhood || property.location.city}
             {property.location.neighborhood && `, ${property.location.city}`}
+          </p>
+        )}
+
+        {/* Summary snippet */}
+        {property.description_generated && (
+          <p className="mb-3 text-xs leading-relaxed text-sand-400 line-clamp-2">
+            {property.description_generated}
           </p>
         )}
 
