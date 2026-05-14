@@ -2,12 +2,11 @@
 Unit tests for benchmark utilities: WER calculation and extraction accuracy.
 """
 
-from aqar_pipeline.benchmarks.wer import calculate_wer
 from aqar_pipeline.benchmarks.extraction_accuracy import (
-    score_extraction,
     _values_match,
+    score_extraction,
 )
-
+from aqar_pipeline.benchmarks.wer import calculate_wer
 
 # ═══════════════════════════════════════
 # WER Calculator
