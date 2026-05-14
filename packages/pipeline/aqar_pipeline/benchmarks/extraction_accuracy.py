@@ -160,19 +160,13 @@ def run_extraction_benchmark(golden_dir: str) -> dict:
     field_aggregates = {}
     for field_name in SCORED_FIELDS:
         total_correct = sum(
-            s.field_scores[field_name].correct
-            for s in scores
-            if field_name in s.field_scores
+            s.field_scores[field_name].correct for s in scores if field_name in s.field_scores
         )
         total_incorrect = sum(
-            s.field_scores[field_name].incorrect
-            for s in scores
-            if field_name in s.field_scores
+            s.field_scores[field_name].incorrect for s in scores if field_name in s.field_scores
         )
         total_missing = sum(
-            s.field_scores[field_name].missing
-            for s in scores
-            if field_name in s.field_scores
+            s.field_scores[field_name].missing for s in scores if field_name in s.field_scores
         )
         total = total_correct + total_incorrect + total_missing
         field_aggregates[field_name] = {
@@ -193,7 +187,12 @@ def run_extraction_benchmark(golden_dir: str) -> dict:
                 "id": s.case_id,
                 "overall_accuracy": s.overall_accuracy,
                 "fields": {
-                    k: {"accuracy": v.accuracy, "correct": v.correct, "incorrect": v.incorrect, "missing": v.missing}
+                    k: {
+                        "accuracy": v.accuracy,
+                        "correct": v.correct,
+                        "incorrect": v.incorrect,
+                        "missing": v.missing,
+                    }
                     for k, v in s.field_scores.items()
                 },
             }

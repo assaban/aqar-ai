@@ -38,9 +38,7 @@ async def pipeline_diagnostics(db: Annotated[AsyncSession, Depends(get_db)]):
     # Count by status
     status_counts = {}
     for status in ProcessingStatus:
-        result = await db.execute(
-            select(ProcessingJob).where(ProcessingJob.status == status)
-        )
+        result = await db.execute(select(ProcessingJob).where(ProcessingJob.status == status))
         jobs = result.scalars().all()
         status_counts[status.value] = len(jobs)
 
@@ -48,12 +46,14 @@ async def pipeline_diagnostics(db: Annotated[AsyncSession, Depends(get_db)]):
     threshold = datetime.now(UTC) - timedelta(minutes=STUCK_THRESHOLD_MINUTES)
     stuck_result = await db.execute(
         select(ProcessingJob).where(
-            ProcessingJob.status.notin_([
-                ProcessingStatus.COMPLETED,
-                ProcessingStatus.FAILED,
-                ProcessingStatus.SKIPPED,
-                ProcessingStatus.PENDING,
-            ]),
+            ProcessingJob.status.notin_(
+                [
+                    ProcessingStatus.COMPLETED,
+                    ProcessingStatus.FAILED,
+                    ProcessingStatus.SKIPPED,
+                    ProcessingStatus.PENDING,
+                ]
+            ),
             ProcessingJob.updated_at < threshold,
         )
     )
@@ -65,16 +65,18 @@ async def pipeline_diagnostics(db: Annotated[AsyncSession, Depends(get_db)]):
             select(VideoSource).where(VideoSource.id == job.video_source_id)
         )
         video = video_result.scalar_one_or_none()
-        stuck_details.append({
-            "job_id": str(job.id),
-            "status": job.status.value,
-            "current_stage": job.current_stage,
-            "video_title": video.title if video else "Unknown",
-            "video_url": video.url if video else "",
-            "updated_at": job.updated_at.isoformat() if job.updated_at else None,
-            "retry_count": job.retry_count,
-            "error_message": job.error_message,
-        })
+        stuck_details.append(
+            {
+                "job_id": str(job.id),
+                "status": job.status.value,
+                "current_stage": job.current_stage,
+                "video_title": video.title if video else "Unknown",
+                "video_url": video.url if video else "",
+                "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+                "retry_count": job.retry_count,
+                "error_message": job.error_message,
+            }
+        )
 
     return {
         "status_counts": status_counts,
@@ -88,7 +90,10 @@ async def pipeline_diagnostics(db: Annotated[AsyncSession, Depends(get_db)]):
 async def retry_job(
     db: Annotated[AsyncSession, Depends(get_db)],
     job_id: uuid.UUID,
-    from_stage: str | None = Query(None, description="Restart from a specific stage: ingestion, audio_extraction, transcription, extraction, geocoding"),
+    from_stage: str | None = Query(
+        None,
+        description="Restart from a specific stage: ingestion, audio_extraction, transcription, extraction, geocoding",
+    ),
 ):
     """
     Retry a specific job.
@@ -96,9 +101,7 @@ async def retry_job(
     Resets the job to PENDING and optionally specifies which stage to restart from.
     Then dispatches the appropriate Celery task.
     """
-    job = await db.execute(
-        select(ProcessingJob).where(ProcessingJob.id == job_id)
-    )
+    job = await db.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     job_record = job.scalar_one_or_none()
 
     if not job_record:
@@ -126,20 +129,26 @@ async def retry_job(
 
     if stage == "ingestion":
         from aqar_pipeline.stages.ingestion import ingest_video
+
         ingest_video.delay(video_record.url, job_id=str(job_record.id))
     elif stage == "audio_extraction":
         from aqar_pipeline.stages.audio_extraction import extract_audio
+
         extract_audio.delay(str(video_record.id))
     elif stage == "transcription":
         from aqar_pipeline.utils.audio import get_audio_path
+
         audio_path = get_audio_path(video_record.external_id)
         from aqar_pipeline.stages.transcription import transcribe_audio
+
         transcribe_audio.delay(str(video_record.id), audio_path)
     elif stage == "extraction":
         from aqar_pipeline.stages.extraction import extract_properties
+
         extract_properties.delay(str(video_record.id))
     elif stage == "geocoding":
         from aqar_pipeline.stages.geocoding import geocode_properties
+
         geocode_properties.delay(str(video_record.id))
     else:
         raise HTTPException(
@@ -174,12 +183,14 @@ async def retry_all_stuck(db: Annotated[AsyncSession, Depends(get_db)]):
 
     stuck_result = await db.execute(
         select(ProcessingJob).where(
-            ProcessingJob.status.notin_([
-                ProcessingStatus.COMPLETED,
-                ProcessingStatus.FAILED,
-                ProcessingStatus.SKIPPED,
-                ProcessingStatus.PENDING,
-            ]),
+            ProcessingJob.status.notin_(
+                [
+                    ProcessingStatus.COMPLETED,
+                    ProcessingStatus.FAILED,
+                    ProcessingStatus.SKIPPED,
+                    ProcessingStatus.PENDING,
+                ]
+            ),
             ProcessingJob.updated_at < threshold,
         )
     )
@@ -187,9 +198,7 @@ async def retry_all_stuck(db: Annotated[AsyncSession, Depends(get_db)]):
 
     retried = []
     for job in stuck_jobs:
-        video = await db.execute(
-            select(VideoSource).where(VideoSource.id == job.video_source_id)
-        )
+        video = await db.execute(select(VideoSource).where(VideoSource.id == job.video_source_id))
         video_record = video.scalar_one_or_none()
         if not video_record:
             continue
@@ -206,11 +215,13 @@ async def retry_all_stuck(db: Annotated[AsyncSession, Depends(get_db)]):
         # Dispatch task
         _dispatch_stage(stage, video_record, job)
 
-        retried.append({
-            "job_id": str(job.id),
-            "from_stage": stage,
-            "video_url": video_record.url,
-        })
+        retried.append(
+            {
+                "job_id": str(job.id),
+                "from_stage": stage,
+                "video_url": video_record.url,
+            }
+        )
 
     await db.flush()
 
@@ -229,9 +240,7 @@ async def cancel_job(
     This does not revoke running Celery tasks, but prevents the
     job from being retried.
     """
-    job = await db.execute(
-        select(ProcessingJob).where(ProcessingJob.id == job_id)
-    )
+    job = await db.execute(select(ProcessingJob).where(ProcessingJob.id == job_id))
     job_record = job.scalar_one_or_none()
 
     if not job_record:
@@ -299,18 +308,24 @@ def _dispatch_stage(stage: str, video, job):
 
     if stage == "ingestion":
         from aqar_pipeline.stages.ingestion import ingest_video
+
         ingest_video.delay(video.url, job_id=str(job.id))
     elif stage == "audio_extraction":
         from aqar_pipeline.stages.audio_extraction import extract_audio
+
         extract_audio.delay(video_id)
     elif stage == "transcription":
         from aqar_pipeline.utils.audio import get_audio_path
+
         audio_path = get_audio_path(video.external_id)
         from aqar_pipeline.stages.transcription import transcribe_audio
+
         transcribe_audio.delay(video_id, audio_path)
     elif stage == "extraction":
         from aqar_pipeline.stages.extraction import extract_properties
+
         extract_properties.delay(video_id)
     elif stage == "geocoding":
         from aqar_pipeline.stages.geocoding import geocode_properties
+
         geocode_properties.delay(video_id)
