@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.app.core.config import get_settings
-from apps.api.app.routers import health, pipeline, properties, search, videos
+from apps.api.app.routers import admin, health, pipeline, properties, search, videos
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix="/api/v1", tags=["Search"])
     app.include_router(videos.router, prefix="/api/v1", tags=["Videos"])
     app.include_router(pipeline.router, prefix="/api/v1", tags=["Pipeline"])
+    app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
 
     return app
 
