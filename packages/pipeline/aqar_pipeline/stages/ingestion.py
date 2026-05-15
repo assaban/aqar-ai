@@ -72,6 +72,7 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
     try:
         from models.base import ChannelRegistration
         from models.base import ChannelStatus as ChStatus
+
         result = session_for_channels.execute(
             select(ChannelRegistration).where(
                 ChannelRegistration.status == ChStatus.APPROVED,
@@ -79,12 +80,14 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
             )
         )
         for ch in result.scalars().all():
-            db_channels.append(ChannelConfig(
-                name=ch.channel_name or "DB Channel",
-                channel_url=ch.channel_url,
-                description=ch.description or "",
-                max_videos=ch.max_videos,
-            ))
+            db_channels.append(
+                ChannelConfig(
+                    name=ch.channel_name or "DB Channel",
+                    channel_url=ch.channel_url,
+                    description=ch.description or "",
+                    max_videos=ch.max_videos,
+                )
+            )
         logger.info(f"Loaded {len(db_channels)} approved channels from database")
     except Exception as e:
         logger.error(f"Error loading channels from database: {e}")
@@ -131,7 +134,9 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
                     if existing:
                         # Ensure job exists for existing video if it was stuck
                         job = session.execute(
-                            select(ProcessingJob).where(ProcessingJob.video_source_id == existing.id)
+                            select(ProcessingJob).where(
+                                ProcessingJob.video_source_id == existing.id
+                            )
                         ).scalar_one_or_none()
                         if job and job.status == ProcessingStatus.PENDING:
                             ids_to_process.append(str(existing.id))
@@ -152,7 +157,11 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
                     session.add(video_source)
                     session.flush()
 
-                    session.add(ProcessingJob(video_source_id=video_source.id, status=ProcessingStatus.PENDING))
+                    session.add(
+                        ProcessingJob(
+                            video_source_id=video_source.id, status=ProcessingStatus.PENDING
+                        )
+                    )
                     ids_to_process.append(str(video_source.id))
                     total_discovered += 1
 
@@ -241,7 +250,9 @@ def ingest_video(self, video_url: str, job_id: str | None = None):
             ).scalar_one_or_none()
 
             if not job:
-                job = ProcessingJob(video_source_id=video_source.id, status=ProcessingStatus.PENDING)
+                job = ProcessingJob(
+                    video_source_id=video_source.id, status=ProcessingStatus.PENDING
+                )
                 session.add(job)
 
             # ── CRITICAL FIX: COMMIT HERE ──
@@ -274,12 +285,16 @@ def retry_failed_jobs():
     """Retry FAILED jobs that haven't hit max retries."""
     session = _get_sync_session()
     try:
-        failed_jobs = session.execute(
-            select(ProcessingJob).where(
-                ProcessingJob.status == ProcessingStatus.FAILED,
-                ProcessingJob.retry_count < ProcessingJob.max_retries,
+        failed_jobs = (
+            session.execute(
+                select(ProcessingJob).where(
+                    ProcessingJob.status == ProcessingStatus.FAILED,
+                    ProcessingJob.retry_count < ProcessingJob.max_retries,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         retried = 0
         for job in failed_jobs:

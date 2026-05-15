@@ -121,9 +121,7 @@ async def register_agent(
     """Register a new real estate agent."""
     # Check duplicate email
     if request.email:
-        existing = await db.execute(
-            select(Agent).where(Agent.email == request.email)
-        )
+        existing = await db.execute(select(Agent).where(Agent.email == request.email))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="Agent with this email already exists")
 
@@ -138,8 +136,8 @@ async def register_agent(
 
 @router.get("/agents/{agent_id}", response_model=AgentResponse)
 async def get_agent(
-        agent_id: uuid.UUID,
-        db: Annotated[AsyncSession, Depends(get_db)],
+    agent_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Fetch details for a single agent."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
@@ -150,9 +148,7 @@ async def get_agent(
 
     # Calculate channel count for response
     ch_count = await db.execute(
-        select(func.count(ChannelRegistration.id)).where(
-            ChannelRegistration.agent_id == agent.id
-        )
+        select(func.count(ChannelRegistration.id)).where(ChannelRegistration.agent_id == agent.id)
     )
 
     # Convert to response with count
@@ -163,9 +159,9 @@ async def get_agent(
 
 @router.patch("/agents/{agent_id}", response_model=AgentResponse)
 async def update_agent(
-        agent_id: uuid.UUID,
-        request: AgentCreateRequest,
-        db: Annotated[AsyncSession, Depends(get_db)],
+    agent_id: uuid.UUID,
+    request: AgentCreateRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an existing agent's details."""
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
@@ -183,6 +179,7 @@ async def update_agent(
     await db.refresh(agent)
     return await get_agent(agent_id, db)
 
+
 @router.get("/agents", response_model=list[AgentResponse])
 async def list_agents(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -197,7 +194,7 @@ async def list_agents(
         query = query.where(Agent.is_verified == verified)
 
     result = await db.execute(query)
-    agents_list = result.scalars().all() # <── Get model instances (not Rows)
+    agents_list = result.scalars().all()  # <── Get model instances (not Rows)
 
     items = []
     for agent in agents_list:
@@ -232,6 +229,7 @@ async def verify_agent(
     await db.flush()
     return {"status": "verified", "agent_id": str(agent_id)}
 
+
 @router.get("/config/geo-defaults")
 async def get_geo_config():
     """Returns dynamic lists of supported countries and cities."""
@@ -240,8 +238,9 @@ async def get_geo_config():
         "cities_by_country": {
             "Morocco": ["Tangier", "Tetouan", "Casablanca", "Marrakesh"],
             "Spain": ["Madrid", "Barcelona", "Malaga"],
-        }
+        },
     }
+
 
 # ═══════════════════════════════════════
 # Channel Registration Endpoints
@@ -259,9 +258,7 @@ async def register_channel(
     """
     # Check duplicate
     existing = await db.execute(
-        select(ChannelRegistration).where(
-            ChannelRegistration.channel_url == request.channel_url
-        )
+        select(ChannelRegistration).where(ChannelRegistration.channel_url == request.channel_url)
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="This channel is already registered")
@@ -271,6 +268,7 @@ async def register_channel(
     channel_id = None
     try:
         from aqar_pipeline.utils.youtube import fetch_channel_videos
+
         # Fetch just 1 video to get channel metadata
         videos = fetch_channel_videos(request.channel_url, max_videos=1)
         if videos:
@@ -321,9 +319,7 @@ async def list_channels(
     for ch in channels:
         agent_name = None
         if ch.agent_id:
-            agent_result = await db.execute(
-                select(Agent.name).where(Agent.id == ch.agent_id)
-            )
+            agent_result = await db.execute(select(Agent.name).where(Agent.id == ch.agent_id))
             agent_name = agent_result.scalar_one_or_none()
         items.append(_channel_to_response(ch, agent_name))
 
@@ -444,27 +440,28 @@ async def discover_youtube_channels(
 
                 # Check if already registered
                 existing = await db.execute(
-                    select(ChannelRegistration).where(
-                        ChannelRegistration.channel_id == ch_id
-                    )
+                    select(ChannelRegistration).where(ChannelRegistration.channel_id == ch_id)
                 )
                 already_registered = existing.scalar_one_or_none() is not None
 
-                results.append(YouTubeSearchResult(
-                    channel_id=ch_id,
-                    channel_name=ch_name,
-                    channel_url=ch_url,
-                    description=entry.get("description", "")[:200] if entry.get("description") else "",
-                    already_registered=already_registered,
-                ))
+                results.append(
+                    YouTubeSearchResult(
+                        channel_id=ch_id,
+                        channel_name=ch_name,
+                        channel_url=ch_url,
+                        description=entry.get("description", "")[:200]
+                        if entry.get("description")
+                        else "",
+                        already_registered=already_registered,
+                    )
+                )
 
     except Exception as e:
         logger.error(f"YouTube channel search error: {e}")
-        raise HTTPException(status_code=500, detail=f"YouTube search failed: {str(e)}")
+        # Add 'from e' to fix Ruff B904
+        raise HTTPException(status_code=500, detail=f"YouTube search failed: {str(e)}") from e
 
-    logger.info(
-        f"YouTube discovery: found {len(results)} channels for '{request.keywords}'"
-    )
+    logger.info(f"YouTube discovery: found {len(results)} channels for '{request.keywords}'")
     return results
 
 

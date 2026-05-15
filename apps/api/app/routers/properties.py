@@ -56,21 +56,31 @@ async def list_properties_endpoint(
 ):
     """List and filter properties with pagination and spatial queries."""
     filters = PropertyFilterDTO(
-        property_type=property_type, listing_type=listing_type,
-        price_min=price_min, price_max=price_max,
-        area_min=area_min, area_max=area_max,
-        rooms_min=rooms_min, neighborhood=neighborhood,
-        lat=lat, lng=lng, radius_km=radius_km,
+        property_type=property_type,
+        listing_type=listing_type,
+        price_min=price_min,
+        price_max=price_max,
+        area_min=area_min,
+        area_max=area_max,
+        rooms_min=rooms_min,
+        neighborhood=neighborhood,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
         needs_review=needs_review,
-        page=page, per_page=per_page,
-        sort_by=sort_by, sort_order=sort_order,
+        page=page,
+        per_page=per_page,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     properties, total = await list_properties(db, filters)
     offset = (page - 1) * per_page
 
     return PropertyListResponse(
         items=[PropertyResponse.model_validate(p) for p in properties],
-        total=total, page=page, per_page=per_page,
+        total=total,
+        page=page,
+        per_page=per_page,
         has_next=(offset + per_page) < total,
     )
 

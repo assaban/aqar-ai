@@ -50,13 +50,15 @@ def _extract_segments(result: dict) -> list[dict]:
     """
     segments = []
     for seg in result.get("segments", []):
-        segments.append({
-            "start": round(seg.get("start", 0.0), 2),
-            "end": round(seg.get("end", 0.0), 2),
-            "text": seg.get("text", "").strip(),
-            "avg_logprob": round(seg.get("avg_logprob", 0.0), 4),
-            "no_speech_prob": round(seg.get("no_speech_prob", 0.0), 4),
-        })
+        segments.append(
+            {
+                "start": round(seg.get("start", 0.0), 2),
+                "end": round(seg.get("end", 0.0), 2),
+                "text": seg.get("text", "").strip(),
+                "avg_logprob": round(seg.get("avg_logprob", 0.0), 4),
+                "no_speech_prob": round(seg.get("no_speech_prob", 0.0), 4),
+            }
+        )
     return segments
 
 
@@ -175,7 +177,9 @@ def transcribe_audio(self, video_source_id: str, audio_path: str):
             used_youtube_subs = True
         else:
             # Fall back to Whisper
-            logger.info(f"No usable YouTube subtitles, using Whisper ({WHISPER_MODEL}): {audio_path}")
+            logger.info(
+                f"No usable YouTube subtitles, using Whisper ({WHISPER_MODEL}): {audio_path}"
+            )
 
             if not os.path.exists(audio_path):
                 manager.fail(
@@ -220,15 +224,17 @@ def transcribe_audio(self, video_source_id: str, audio_path: str):
         session.flush()
 
         # Complete the stage
-        manager.complete_stage(metadata={
-            "source": transcription_source,
-            "language_detected": detected_language,
-            "confidence": confidence,
-            "segments_count": len(segments),
-            "text_length": len(normalized_text),
-            "processing_time_seconds": transcription_time,
-            "used_youtube_subs": used_youtube_subs,
-        })
+        manager.complete_stage(
+            metadata={
+                "source": transcription_source,
+                "language_detected": detected_language,
+                "confidence": confidence,
+                "segments_count": len(segments),
+                "text_length": len(normalized_text),
+                "processing_time_seconds": transcription_time,
+                "used_youtube_subs": used_youtube_subs,
+            }
+        )
 
         logger.info(
             f"Transcript saved ({transcription_source}): {len(normalized_text)} chars, "
