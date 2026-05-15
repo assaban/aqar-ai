@@ -13,7 +13,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.api.app.core.database import get_db
@@ -326,7 +326,7 @@ async def trigger_channel_scan(
     Admin: trigger an immediate discovery scan for a specific channel.
     Provide either channel_id (from DB) or channel_url (direct).
     """
-    from models.base import ChannelRegistration, ChannelStatus
+    from models.base import ChannelRegistration
 
     url_to_scan = channel_url
 
@@ -343,8 +343,8 @@ async def trigger_channel_scan(
         raise HTTPException(status_code=400, detail="Provide channel_id or channel_url")
 
     # Trigger the ingestion for each video found in the channel
-    from aqar_pipeline.utils.youtube import fetch_channel_videos
     from aqar_pipeline.stages.ingestion import ingest_video
+    from aqar_pipeline.utils.youtube import fetch_channel_videos
 
     try:
         videos = fetch_channel_videos(url_to_scan, max_videos=10)

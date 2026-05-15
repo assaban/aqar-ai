@@ -31,6 +31,8 @@ app.conf.update(
     enable_utc=True,
     # Task behavior
     task_track_started=True,
+    worker_send_task_events=True, # <── for Flower visibility
+    task_send_sent_event=True,    # <── Check event sent?
     task_acks_late=True,  # Re-queue tasks if worker crashes
     worker_prefetch_multiplier=1,  # One task at a time per worker (ML tasks are heavy)
     # Retry

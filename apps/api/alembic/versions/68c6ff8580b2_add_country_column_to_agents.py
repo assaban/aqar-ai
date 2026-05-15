@@ -5,18 +5,17 @@ Revises: 6c671c1b922d
 Create Date: 2026-05-14 16:20:01.069719
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
-import geoalchemy2
-
 
 # revision identifiers, used by Alembic.
 revision: str = '68c6ff8580b2'
-down_revision: Union[str, None] = '6c671c1b922d'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = '6c671c1b922d'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 # Inside apps/api/alembic/versions/68c6ff8580b2_...py

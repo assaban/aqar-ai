@@ -8,9 +8,10 @@ Handles channel scanning, video info extraction, and URL normalization.
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import yt_dlp
 
@@ -68,13 +69,15 @@ def _parse_upload_date(date_str: str | None) -> datetime | None:
     if not date_str:
         return None
     try:
-        return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
+        return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
     except ValueError:
         return None
 
 
+# Update _build_ydl_opts to include safety delays
+# packages/aqar_pipeline/utils/youtube.py
 def _build_ydl_opts(quiet: bool = True) -> dict:
-    """Build yt-dlp options for metadata extraction (no download)."""
+    """Build yt-dlp options with rate-limit protection."""
     return {
         "quiet": quiet,
         "no_warnings": quiet,
@@ -82,6 +85,10 @@ def _build_ydl_opts(quiet: bool = True) -> dict:
         "skip_download": True,
         "ignoreerrors": True,
         "no_color": True,
+        # ── ADD THESE TO AVOID RATE LIMITING ──
+        "sleep_interval": 5,           # Sleep 5s between requests
+        "max_sleep_interval": 15,      # Randomize sleep up to 15s
+        "sleep_interval_requests": 1,  # Sleep after every single request
     }
 
 
@@ -391,8 +398,6 @@ def _extract_subtitle_text(
     yt-dlp provides subtitle info as a list of available formats.
     We download the json3 or srv3 format and parse it.
     """
-    import json
-    import tempfile
 
     # Find json3 format (structured with timestamps)
     json3_format = None

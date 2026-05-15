@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchStats } from "@/lib/api"; // Uses your unified client
+import { RecentProperties } from "@/components/RecentProperties";
 
 export default async function HomePage() {
   // Fetch stats server-side (uses http://api:8000 internally)
@@ -40,6 +41,9 @@ export default async function HomePage() {
           <StatItem label="AI Accuracy" value={`${((stats?.avg_extraction_confidence ?? 0.85) * 100).toFixed(0)}%`} />
         </div>
       </section>
+
+      {/* ── Recent Properties (Horizontal Scroll) ── */}
+      <RecentProperties />
 
       {/* ── Features Section ── */}
       <section className="mx-auto max-w-6xl px-4 py-24 sm:px-6">

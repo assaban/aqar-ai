@@ -22,7 +22,7 @@ from shapely.geometry import Point
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from models.base import Location, ProcessingJob, Property, VideoSource
+from models.base import Location, Property, VideoSource
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,6 @@ def geocode_properties(self, video_source_id: str):
     from aqar_pipeline.utils.job_manager import JobManager
     from aqar_pipeline.utils.meilisearch_sync import (
         ensure_index,
-        index_property,
         property_to_document,
     )
 
