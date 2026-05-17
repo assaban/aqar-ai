@@ -1,25 +1,12 @@
 import { formatPrice } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { serverFetch } from "@/lib/server-api";
 
 async function getStats() {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/stats`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return serverFetch<Record<string, any>>("/api/v1/stats", { revalidate: 60 });
 }
 
 async function getNeighborhoodStats() {
-  try {
-    const res = await fetch(`${API_BASE}/api/v1/stats/neighborhoods`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  return serverFetch<Record<string, any>>("/api/v1/stats/neighborhoods", { revalidate: 60 });
 }
 
 export default async function StatsPage() {

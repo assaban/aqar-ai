@@ -88,16 +88,22 @@ def geocode_properties(self, video_source_id: str):
 
         if not properties:
             logger.warning(f"No properties found for video: {video_source_id}")
-            # Still complete the pipeline
             manager = JobManager(session, video_source_id)
-            manager.start_stage("geocoding")
-            manager.complete_stage(metadata={"properties_geocoded": 0})
-            manager.mark_completed()
+            if manager.start_stage("geocoding"):
+                manager.complete_stage(metadata={"properties_geocoded": 0})
+                manager.mark_completed()
             return {"status": "completed", "properties_geocoded": 0}
 
         # Initialize JobManager
         manager = JobManager(session, video_source_id)
-        manager.start_stage("geocoding")
+
+        # Idempotency guard: skip if already completed (Celery re-delivery)
+        if not manager.start_stage("geocoding"):
+            return {
+                "status": "skipped",
+                "reason": "already_completed",
+                "video_source_id": video_source_id,
+            }
 
         # Ensure Meilisearch index exists
         ensure_index()

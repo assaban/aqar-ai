@@ -135,17 +135,20 @@ typecheck: ## Run type checkers (inside Docker)
 
 migrate: ## Run database migrations
 	@echo "$(CYAN)🗄️  Running migrations...$(RESET)"
-	$(DOCKER_COMPOSE) exec api alembic -c apps/api/alembic.ini upgrade head
+	cd apps/api && alembic upgrade head
 
 migrate-create: ## Create a new migration (usage: make migrate-create MSG="add users table")
-	$(DOCKER_COMPOSE) exec api alembic -c apps/api/alembic.ini revision --autogenerate -m "$(MSG)"
+	cd apps/api && alembic revision --autogenerate -m "$(MSG)"
 
 migrate-rollback: ## Rollback last migration
-	$(DOCKER_COMPOSE) exec api alembic -c apps/api/alembic.ini downgrade -1
+	cd apps/api && alembic downgrade -1
 
 seed: ## Seed database with sample data
 	@echo "$(CYAN)🌱 Seeding database...$(RESET)"
 	cd apps/api && $(PYTHON) -m app.core.seed
+
+reset: ## DROP ALL DATA and reset database from scratch
+	@bash infra/scripts/reset-db.sh
 
 # ═══════════════════════════════════════
 # Utilities

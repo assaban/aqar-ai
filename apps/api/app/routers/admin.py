@@ -329,3 +329,103 @@ def _dispatch_stage(stage: str, video, job):
         from aqar_pipeline.stages.geocoding import geocode_properties
 
         geocode_properties.delay(video_id)
+
+
+@router.post("/pipeline/admin/scan-channel")
+async def trigger_channel_scan(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    channel_id: uuid.UUID | None = None,
+    channel_url: str | None = None,
+):
+    """
+    Admin: trigger an immediate discovery scan for a specific channel.
+    Provide either channel_id (from DB) or channel_url (direct).
+    """
+    from models.base import ChannelRegistration
+
+    url_to_scan = channel_url
+
+    if channel_id:
+        result = await db.execute(
+            select(ChannelRegistration).where(ChannelRegistration.id == channel_id)
+        )
+        ch = result.scalar_one_or_none()
+        if not ch:
+            raise HTTPException(status_code=404, detail="Channel not found")
+        url_to_scan = ch.channel_url
+
+    if not url_to_scan:
+        raise HTTPException(status_code=400, detail="Provide channel_id or channel_url")
+
+    # Trigger the ingestion for each video found in the channel
+    from aqar_pipeline.stages.ingestion import ingest_video
+    from aqar_pipeline.utils.youtube import fetch_channel_videos
+
+    try:
+        videos = fetch_channel_videos(url_to_scan, max_videos=10)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Channel scan failed: {str(e)}") from e
+
+    submitted = 0
+    for video in videos:
+        ingest_video.delay(video.url)
+        submitted += 1
+
+    logger.info(f"Channel scan triggered: {submitted} videos from {url_to_scan}")
+    return {
+        "status": "scan_triggered",
+        "channel_url": url_to_scan,
+        "videos_submitted": submitted,
+    }
+
+
+@router.post("/pipeline/admin/discover-now")
+async def trigger_discovery(region: str = "tangier-tetouan"):
+    """Admin: trigger the full discovery task immediately (all approved channels)."""
+    from aqar_pipeline.stages.ingestion import discover_videos
+
+    discover_videos.delay(region=region)
+    logger.info(f"Full discovery triggered for region: {region}")
+    return {"status": "discovery_triggered", "region": region}
+
+
+@router.get("/channels/{channel_id}/browse-videos")
+async def browse_channel_videos(
+    db: Annotated[AsyncSession, Depends(get_db)], channel_id: uuid.UUID, limit: int = 15
+):
+    """Fetch un-ingested videos from a channel to select them for manual processing."""
+    from models.base import ChannelRegistration
+
+    result = await db.execute(
+        select(ChannelRegistration).where(ChannelRegistration.id == channel_id)
+    )
+    channel = result.scalar_one_or_none()
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel tracking record not found")
+
+    from aqar_pipeline.utils.youtube import fetch_channel_videos
+
+    try:
+        videos = fetch_channel_videos(channel.channel_url, max_videos=limit)
+
+        # Check against existing elements to add an intake safety flag
+        processed_details = []
+        for v in videos:
+            existing = await db.execute(
+                select(VideoSource).where(VideoSource.external_id == v.external_id)
+            )
+            processed_details.append(
+                {
+                    "external_id": v.external_id,
+                    "title": v.title,
+                    "url": v.url,
+                    "duration_seconds": v.duration_seconds,
+                    "published_at": v.published_at.isoformat() if v.published_at else None,
+                    "already_listed": existing.scalar_one_or_none() is not None,
+                }
+            )
+        return processed_details
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to scan channel targets: {str(e)}"
+        ) from e

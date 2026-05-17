@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   },
   description:
     "Find your property in Tangier and Tetouan. Automated data extraction from YouTube real estate videos.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
