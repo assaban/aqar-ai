@@ -189,6 +189,20 @@ export async function fetchProperty(id: string): Promise<Property> {
   return apiFetch(`/api/v1/properties/${id}`);
 }
 
+export async function fetchRecentProperties(limit = 10): Promise<Property[]> {
+  return apiFetch(`/api/v1/properties/recent?limit=${limit}`);
+}
+
+export async function updateProperty(
+  id: string,
+  updates: Partial<Property>
+): Promise<Property> {
+  return apiFetch(`/api/v1/properties/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
 // ═══════════════════════════════════════
 // Search
 // ═══════════════════════════════════════

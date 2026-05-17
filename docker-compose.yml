@@ -10,6 +10,7 @@ services:
     image: postgis/postgis:16-3.4
     container_name: aqar-db
     restart: unless-stopped
+    platform: linux/amd64
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aqar}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aqar_dev_password}
@@ -45,6 +46,7 @@ services:
     image: getmeili/meilisearch:v1.11
     container_name: aqar-meilisearch
     restart: unless-stopped
+    platform: linux/amd64
     environment:
       MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-aqar_meili_dev_key}
       MEILI_ENV: development
@@ -134,6 +136,7 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_MEILISEARCH_URL=http://localhost:7700
+      - API_SERVER_URL=http://api:8000
     ports:
       - "3000:3000"
     volumes:
