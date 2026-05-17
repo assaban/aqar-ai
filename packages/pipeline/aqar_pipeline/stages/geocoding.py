@@ -80,9 +80,11 @@ def geocode_properties(self, video_source_id: str):
             logger.error(f"VideoSource not found: {video_source_id}")
             return {"status": "error", "message": "Video not found"}
 
-        properties = session.execute(
-            select(Property).where(Property.video_source_id == video.id)
-        ).scalars().all()
+        properties = (
+            session.execute(select(Property).where(Property.video_source_id == video.id))
+            .scalars()
+            .all()
+        )
 
         if not properties:
             logger.warning(f"No properties found for video: {video_source_id}")
@@ -150,59 +152,66 @@ def geocode_properties(self, video_source_id: str):
                 geocoded_count += 1
 
                 # Prepare Meilisearch document
-                meili_docs.append(property_to_document(
-                    property_id=str(prop.id),
-                    property_type=prop.property_type.value if prop.property_type else "other",
-                    listing_type=prop.listing_type.value if prop.listing_type else "unknown",
-                    title=prop.title_generated,
-                    description=prop.description_generated,
-                    price=prop.price,
-                    area_sqm=prop.area_sqm,
-                    rooms=prop.rooms,
-                    bedrooms=prop.bedrooms,
-                    neighborhood=result.neighborhood or neighborhood_hint,
-                    city=result.city,
-                    legal_status=prop.legal_status.value if prop.legal_status else "unknown",
-                    latitude=result.latitude,
-                    longitude=result.longitude,
-                    is_published=prop.is_published,
-                    created_at=prop.created_at.isoformat() if prop.created_at else None,
-                ))
+                meili_docs.append(
+                    property_to_document(
+                        property_id=str(prop.id),
+                        property_type=prop.property_type.value if prop.property_type else "other",
+                        listing_type=prop.listing_type.value if prop.listing_type else "unknown",
+                        title=prop.title_generated,
+                        description=prop.description_generated,
+                        price=prop.price,
+                        area_sqm=prop.area_sqm,
+                        rooms=prop.rooms,
+                        bedrooms=prop.bedrooms,
+                        neighborhood=result.neighborhood or neighborhood_hint,
+                        city=result.city,
+                        legal_status=prop.legal_status.value if prop.legal_status else "unknown",
+                        latitude=result.latitude,
+                        longitude=result.longitude,
+                        is_published=prop.is_published,
+                        created_at=prop.created_at.isoformat() if prop.created_at else None,
+                    )
+                )
             else:
                 logger.warning(f"Geocoding failed for property {prop.id}: '{search_text}'")
                 failed_count += 1
 
                 # Still index in Meilisearch (without geo coordinates)
-                meili_docs.append(property_to_document(
-                    property_id=str(prop.id),
-                    property_type=prop.property_type.value if prop.property_type else "other",
-                    listing_type=prop.listing_type.value if prop.listing_type else "unknown",
-                    title=prop.title_generated,
-                    description=prop.description_generated,
-                    price=prop.price,
-                    area_sqm=prop.area_sqm,
-                    rooms=prop.rooms,
-                    bedrooms=prop.bedrooms,
-                    neighborhood=neighborhood_hint,
-                    city=city_hint,
-                    legal_status=prop.legal_status.value if prop.legal_status else "unknown",
-                    is_published=prop.is_published,
-                    created_at=prop.created_at.isoformat() if prop.created_at else None,
-                ))
+                meili_docs.append(
+                    property_to_document(
+                        property_id=str(prop.id),
+                        property_type=prop.property_type.value if prop.property_type else "other",
+                        listing_type=prop.listing_type.value if prop.listing_type else "unknown",
+                        title=prop.title_generated,
+                        description=prop.description_generated,
+                        price=prop.price,
+                        area_sqm=prop.area_sqm,
+                        rooms=prop.rooms,
+                        bedrooms=prop.bedrooms,
+                        neighborhood=neighborhood_hint,
+                        city=city_hint,
+                        legal_status=prop.legal_status.value if prop.legal_status else "unknown",
+                        is_published=prop.is_published,
+                        created_at=prop.created_at.isoformat() if prop.created_at else None,
+                    )
+                )
 
         session.flush()
 
         # Batch index in Meilisearch
         if meili_docs:
             from aqar_pipeline.utils.meilisearch_sync import index_properties
+
             index_properties(meili_docs)
 
         # Complete the stage and mark pipeline as done
-        manager.complete_stage(metadata={
-            "properties_geocoded": geocoded_count,
-            "properties_failed": failed_count,
-            "properties_total": len(properties),
-        })
+        manager.complete_stage(
+            metadata={
+                "properties_geocoded": geocoded_count,
+                "properties_failed": failed_count,
+                "properties_total": len(properties),
+            }
+        )
         manager.mark_completed()
 
         session.commit()

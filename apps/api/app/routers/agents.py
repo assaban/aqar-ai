@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from re import compile
 from typing import Annotated
 
 import structlog
@@ -24,7 +25,6 @@ from models.base import (
     Property,
     VideoSource,
 )
-
 from packages.db.models.base import ChannelStatus
 
 logger = structlog.get_logger()
@@ -189,26 +189,39 @@ async def list_agents(
 
     items = []
     for a in agents:
-        ch_count = (await db.execute(
-            select(func.count(ChannelRegistration.id)).where(ChannelRegistration.agent_id == a.id)
-        )).scalar_one()
+        ch_count = (
+            await db.execute(
+                select(func.count(ChannelRegistration.id)).where(
+                    ChannelRegistration.agent_id == a.id
+                )
+            )
+        ).scalar_one()
 
         # Count properties from this agent's channels
-        prop_count = (await db.execute(
-            select(func.count(Property.id))
-            .join(VideoSource, Property.video_source_id == VideoSource.id)
-            .join(ChannelRegistration, VideoSource.channel_id == ChannelRegistration.channel_id)
-            .where(ChannelRegistration.agent_id == a.id)
-        )).scalar_one()
+        prop_count = (
+            await db.execute(
+                select(func.count(Property.id))
+                .join(VideoSource, Property.video_source_id == VideoSource.id)
+                .join(ChannelRegistration, VideoSource.channel_id == ChannelRegistration.channel_id)
+                .where(ChannelRegistration.agent_id == a.id)
+            )
+        ).scalar_one()
 
-        items.append(AgentListItem(
-            id=str(a.id), name=a.name, email=a.email, phone=a.phone,
-            company=a.company, city=a.city,
-            country=a.country or "Morocco",
-            is_verified=a.is_verified, channels_count=ch_count,
-            properties_count=prop_count,
-            created_at=a.created_at.isoformat() if a.created_at else "",
-        ))
+        items.append(
+            AgentListItem(
+                id=str(a.id),
+                name=a.name,
+                email=a.email,
+                phone=a.phone,
+                company=a.company,
+                city=a.city,
+                country=a.country or "Morocco",
+                is_verified=a.is_verified,
+                channels_count=ch_count,
+                properties_count=prop_count,
+                created_at=a.created_at.isoformat() if a.created_at else "",
+            )
+        )
     return items
 
 
@@ -224,8 +237,12 @@ async def create_agent(
             raise HTTPException(status_code=409, detail="Agent with this email already exists")
 
     agent = Agent(
-        name=request.name, email=request.email, phone=request.phone,
-        company=request.company, city=request.city, notes=request.notes,
+        name=request.name,
+        email=request.email,
+        phone=request.phone,
+        company=request.company,
+        city=request.city,
+        notes=request.notes,
     )
     db.add(agent)
     await db.flush()
@@ -278,11 +295,10 @@ async def verify_agent(db: Annotated[AsyncSession, Depends(get_db)], agent_id: u
 # Channel Endpoints
 # ═══════════════════════════════════════
 
-import re
-
 # Add these regex compilation helpers at the top of agents.py
-EMAIL_REGEX = re.compile(r'[\w\.-]+@[\w\.-]+\.\w+')
-MOROCCO_PHONE_REGEX = re.compile(r'(?:\+212|0)[67]\d{8}')
+EMAIL_REGEX = compile(r"[\w\.-]+@[\w\.-]+\.\w+")
+MOROCCO_PHONE_REGEX = compile(r"(?:\+212|0)[67]\d{8}")
+
 
 @router.post("/channels", response_model=ChannelResponse)
 async def register_channel(
@@ -302,6 +318,7 @@ async def register_channel(
 
     try:
         from aqar_pipeline.utils.youtube import fetch_channel_videos
+
         videos = fetch_channel_videos(request.channel_url, max_videos=1)
         if videos:
             channel_name = channel_name or videos[0].channel_name
@@ -319,7 +336,11 @@ async def register_channel(
         found_emails = EMAIL_REGEX.findall(description_text)
         found_phones = MOROCCO_PHONE_REGEX.findall(description_text)
 
-        agent_email = found_emails[0] if found_emails else f"contact+{channel_id or uuid.uuid4().hex[:6]}@aqar.ai"
+        agent_email = (
+            found_emails[0]
+            if found_emails
+            else f"contact+{channel_id or uuid.uuid4().hex[:6]}@aqar.ai"
+        )
         agent_phone = found_phones[0] if found_phones else None
 
         # Guard against duplicate emails across automatic scans
@@ -336,7 +357,7 @@ async def register_channel(
                 company=channel_name,
                 city="Tangier",
                 is_verified=False,
-                notes="Automatically provisioned from YouTube channel extraction profile."
+                notes="Automatically provisioned from YouTube channel extraction profile.",
             )
             db.add(new_agent)
             await db.flush()
@@ -386,9 +407,9 @@ async def approve_channel(
     request: ChannelApprovalRequest,
 ):
     """Approve or reject a channel."""
-    ch = (await db.execute(
-        select(ChannelRegistration).where(ChannelRegistration.id == channel_id)
-    )).scalar_one_or_none()
+    ch = (
+        await db.execute(select(ChannelRegistration).where(ChannelRegistration.id == channel_id))
+    ).scalar_one_or_none()
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
 
@@ -414,15 +435,15 @@ async def link_channel_to_agent(
     request: LinkChannelRequest,
 ):
     """Link an existing channel to an agent."""
-    ch = (await db.execute(
-        select(ChannelRegistration).where(ChannelRegistration.id == channel_id)
-    )).scalar_one_or_none()
+    ch = (
+        await db.execute(select(ChannelRegistration).where(ChannelRegistration.id == channel_id))
+    ).scalar_one_or_none()
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
 
-    agent = (await db.execute(
-        select(Agent).where(Agent.id == request.agent_id)
-    )).scalar_one_or_none()
+    agent = (
+        await db.execute(select(Agent).where(Agent.id == request.agent_id))
+    ).scalar_one_or_none()
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -435,9 +456,9 @@ async def link_channel_to_agent(
 
 @router.post("/channels/{channel_id}/disable")
 async def disable_channel(db: Annotated[AsyncSession, Depends(get_db)], channel_id: uuid.UUID):
-    ch = (await db.execute(
-        select(ChannelRegistration).where(ChannelRegistration.id == channel_id)
-    )).scalar_one_or_none()
+    ch = (
+        await db.execute(select(ChannelRegistration).where(ChannelRegistration.id == channel_id))
+    ).scalar_one_or_none()
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
     ch.status = "disabled"
@@ -457,9 +478,9 @@ async def trigger_channel_scan(
     and for each new video, submits it to the full pipeline:
     ingest -> audio -> transcribe -> extract -> geocode -> DONE
     """
-    ch = (await db.execute(
-        select(ChannelRegistration).where(ChannelRegistration.id == channel_id)
-    )).scalar_one_or_none()
+    ch = (
+        await db.execute(select(ChannelRegistration).where(ChannelRegistration.id == channel_id))
+    ).scalar_one_or_none()
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
 
@@ -517,8 +538,11 @@ async def discover_youtube_channels(
 
     search_query = f"ytsearch{request.max_results}:{request.keywords}"
     opts = {
-        "quiet": True, "no_warnings": True, "extract_flat": True,
-        "skip_download": True, "no_color": True,
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": True,
+        "skip_download": True,
+        "no_color": True,
     }
 
     results = []
@@ -555,21 +579,25 @@ async def discover_youtube_channels(
 
         # Check registration status for each channel
         for ch_id, ch_data in seen_channels.items():
-            existing = (await db.execute(
-                select(ChannelRegistration).where(ChannelRegistration.channel_id == ch_id)
-            )).scalar_one_or_none()
+            existing = (
+                await db.execute(
+                    select(ChannelRegistration).where(ChannelRegistration.channel_id == ch_id)
+                )
+            ).scalar_one_or_none()
 
-            results.append(DiscoveredChannel(
-                channel_id=ch_data["channel_id"],
-                channel_name=ch_data["channel_name"],
-                channel_url=ch_data["channel_url"],
-                description=ch_data["description"],
-                video_count=ch_data["video_count"],
-                recent_upload=ch_data["recent_upload"],
-                recent_upload_date=ch_data["recent_upload_date"],
-                already_registered=existing is not None,
-                existing_channel_id=str(existing.id) if existing else None,
-            ))
+            results.append(
+                DiscoveredChannel(
+                    channel_id=ch_data["channel_id"],
+                    channel_name=ch_data["channel_name"],
+                    channel_url=ch_data["channel_url"],
+                    description=ch_data["description"],
+                    video_count=ch_data["video_count"],
+                    recent_upload=ch_data["recent_upload"],
+                    recent_upload_date=ch_data["recent_upload_date"],
+                    already_registered=existing is not None,
+                    existing_channel_id=str(existing.id) if existing else None,
+                )
+            )
 
         # Sort: unregistered first, then by video count
         results.sort(key=lambda x: (x.already_registered, -(x.video_count or 0)))
@@ -590,13 +618,17 @@ async def _build_agent_detail(db: AsyncSession, agent: Agent) -> AgentDetailResp
     """Build a full agent detail response with channels and properties."""
     # Get channels
     ch_result = await db.execute(
-        select(ChannelRegistration).where(ChannelRegistration.agent_id == agent.id)
+        select(ChannelRegistration)
+        .where(ChannelRegistration.agent_id == agent.id)
         .order_by(ChannelRegistration.created_at.desc())
     )
     channels = [
         ChannelSummary(
-            id=str(ch.id), channel_url=ch.channel_url, channel_name=ch.channel_name,
-            status=ch.status, max_videos=ch.max_videos,
+            id=str(ch.id),
+            channel_url=ch.channel_url,
+            channel_name=ch.channel_name,
+            status=ch.status,
+            max_videos=ch.max_videos,
             created_at=ch.created_at.isoformat() if ch.created_at else "",
         )
         for ch in ch_result.scalars().all()
@@ -619,38 +651,60 @@ async def _build_agent_detail(db: AsyncSession, agent: Agent) -> AgentDetailResp
         neighborhood = None
         if p.location:
             neighborhood = p.location.neighborhood
-        properties.append(PropertySummary(
-            id=str(p.id), title=p.title_generated, property_type=p.property_type.value if p.property_type else "other",
-            price=p.price, neighborhood=neighborhood, is_published=p.is_published,
-            created_at=p.created_at.isoformat() if p.created_at else "",
-        ))
+        properties.append(
+            PropertySummary(
+                id=str(p.id),
+                title=p.title_generated,
+                property_type=p.property_type.value if p.property_type else "other",
+                price=p.price,
+                neighborhood=neighborhood,
+                is_published=p.is_published,
+                created_at=p.created_at.isoformat() if p.created_at else "",
+            )
+        )
 
     total_published = sum(1 for p in properties if p.is_published)
 
     return AgentDetailResponse(
-        id=str(agent.id), name=agent.name, email=agent.email, phone=agent.phone,
-        company=agent.company, city=agent.city,
+        id=str(agent.id),
+        name=agent.name,
+        email=agent.email,
+        phone=agent.phone,
+        company=agent.company,
+        city=agent.city,
         country=agent.country or "Morocco",
-        is_verified=agent.is_verified, notes=agent.notes,
+        is_verified=agent.is_verified,
+        notes=agent.notes,
         created_at=agent.created_at.isoformat() if agent.created_at else "",
-        channels=channels, properties=properties,
-        total_properties=len(properties), total_published=total_published,
+        channels=channels,
+        properties=properties,
+        total_properties=len(properties),
+        total_published=total_published,
     )
 
 
 async def _build_channel_response(db: AsyncSession, ch: ChannelRegistration) -> ChannelResponse:
     agent_name = None
     if ch.agent_id:
-        agent = (await db.execute(select(Agent.name).where(Agent.id == ch.agent_id))).scalar_one_or_none()
+        agent = (
+            await db.execute(select(Agent.name).where(Agent.id == ch.agent_id))
+        ).scalar_one_or_none()
         agent_name = agent
 
     return ChannelResponse(
-        id=str(ch.id), channel_url=ch.channel_url, channel_name=ch.channel_name,
-        channel_id=ch.channel_id, description=ch.description, region=ch.region,
-        status=ch.status, max_videos=ch.max_videos,
-        discovered_via=ch.discovered_via, rejection_reason=ch.rejection_reason,
+        id=str(ch.id),
+        channel_url=ch.channel_url,
+        channel_name=ch.channel_name,
+        channel_id=ch.channel_id,
+        description=ch.description,
+        region=ch.region,
+        status=ch.status,
+        max_videos=ch.max_videos,
+        discovered_via=ch.discovered_via,
+        rejection_reason=ch.rejection_reason,
         agent_id=str(ch.agent_id) if ch.agent_id else None,
-        agent_name=agent_name, tags=ch.tags,
+        agent_name=agent_name,
+        tags=ch.tags,
         created_at=ch.created_at.isoformat() if ch.created_at else "",
         approved_at=ch.approved_at.isoformat() if ch.approved_at else None,
     )

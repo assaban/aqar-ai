@@ -80,19 +80,17 @@ class PropertyFilterDTO(BaseModel):
 async def get_property_by_id(db: AsyncSession, property_id: uuid.UUID) -> Property | None:
     """Fetch a single property with its location."""
     result = await db.execute(
-        select(Property)
-        .options(joinedload(Property.location))
-        .where(Property.id == property_id)
+        select(Property).options(joinedload(Property.location)).where(Property.id == property_id)
     )
     return result.unique().scalar_one_or_none()
 
 
-async def list_properties(db: AsyncSession, filters: PropertyFilterDTO) -> tuple[list[Property], int]:
+async def list_properties(
+    db: AsyncSession, filters: PropertyFilterDTO
+) -> tuple[list[Property], int]:
     """List properties with filtering, pagination, and optional spatial query."""
     query = (
-        select(Property)
-        .options(joinedload(Property.location))
-        .where(Property.is_published == True)  # noqa: E712
+        select(Property).options(joinedload(Property.location)).where(Property.is_published == True)  # noqa: E712
     )
 
     if filters.property_type:
@@ -119,10 +117,13 @@ async def list_properties(db: AsyncSession, filters: PropertyFilterDTO) -> tuple
     # Spatial query
     if filters.lat is not None and filters.lng is not None and filters.radius_km is not None:
         from geoalchemy2.functions import ST_DWithin, ST_MakePoint, ST_SetSRID
+
         radius_m = filters.radius_km * 1000
         search_point = ST_SetSRID(ST_MakePoint(filters.lng, filters.lat), 4326)
         query = query.join(Property.location).where(
-            ST_DWithin(cast(Location.geom, Location.geom.type), search_point, radius_m, use_spheroid=True)
+            ST_DWithin(
+                cast(Location.geom, Location.geom.type), search_point, radius_m, use_spheroid=True
+            )
         )
 
     # Count
@@ -176,28 +177,50 @@ async def get_stats(db: AsyncSession) -> dict:
     """Calculate system-wide statistics."""
     videos = (await db.execute(select(func.count(VideoSource.id)))).scalar_one()
     properties = (await db.execute(select(func.count(Property.id)))).scalar_one()
-    published = (await db.execute(
-        select(func.count(Property.id)).where(Property.is_published == True)  # noqa: E712
-    )).scalar_one()
-    pending = (await db.execute(
-        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.PENDING)
-    )).scalar_one()
-    failed = (await db.execute(
-        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.FAILED)
-    )).scalar_one()
-    completed = (await db.execute(
-        select(func.count(ProcessingJob.id)).where(ProcessingJob.status == ProcessingStatus.COMPLETED)
-    )).scalar_one()
-    avg_conf = (await db.execute(
-        select(func.avg(Property.extraction_confidence)).where(Property.extraction_confidence.isnot(None))
-    )).scalar_one()
+    published = (
+        await db.execute(
+            select(func.count(Property.id)).where(Property.is_published == True)  # noqa: E712
+        )
+    ).scalar_one()
+    pending = (
+        await db.execute(
+            select(func.count(ProcessingJob.id)).where(
+                ProcessingJob.status == ProcessingStatus.PENDING
+            )
+        )
+    ).scalar_one()
+    failed = (
+        await db.execute(
+            select(func.count(ProcessingJob.id)).where(
+                ProcessingJob.status == ProcessingStatus.FAILED
+            )
+        )
+    ).scalar_one()
+    completed = (
+        await db.execute(
+            select(func.count(ProcessingJob.id)).where(
+                ProcessingJob.status == ProcessingStatus.COMPLETED
+            )
+        )
+    ).scalar_one()
+    avg_conf = (
+        await db.execute(
+            select(func.avg(Property.extraction_confidence)).where(
+                Property.extraction_confidence.isnot(None)
+            )
+        )
+    ).scalar_one()
 
     # Type breakdowns
     type_rows = await db.execute(
-        select(cast(Property.property_type, String), func.count(Property.id)).group_by(Property.property_type)
+        select(cast(Property.property_type, String), func.count(Property.id)).group_by(
+            Property.property_type
+        )
     )
     listing_rows = await db.execute(
-        select(cast(Property.listing_type, String), func.count(Property.id)).group_by(Property.listing_type)
+        select(cast(Property.listing_type, String), func.count(Property.id)).group_by(
+            Property.listing_type
+        )
     )
 
     return {

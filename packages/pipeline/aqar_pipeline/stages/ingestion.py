@@ -77,8 +77,10 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
     db_channels = []
     try:
         from models.base import ChannelRegistration
+
         session_for_channels = _get_sync_session()
         from sqlalchemy import select as sa_select
+
         result = session_for_channels.execute(
             sa_select(ChannelRegistration).where(
                 ChannelRegistration.status == "approved",
@@ -86,12 +88,14 @@ def discover_videos(self, region: str = "tangier-tetouan", config_path: str | No
             )
         )
         for ch in result.scalars().all():
-            db_channels.append(ChannelConfig(
-                name=ch.channel_name or "DB Channel",
-                channel_url=ch.channel_url,
-                description=ch.description or "",
-                max_videos=ch.max_videos,
-            ))
+            db_channels.append(
+                ChannelConfig(
+                    name=ch.channel_name or "DB Channel",
+                    channel_url=ch.channel_url,
+                    description=ch.description or "",
+                    max_videos=ch.max_videos,
+                )
+            )
         session_for_channels.close()
         logger.info(f"Loaded {len(db_channels)} approved channels from database")
     except Exception as e:
