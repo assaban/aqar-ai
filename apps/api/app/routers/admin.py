@@ -426,4 +426,6 @@ async def browse_channel_videos(
             )
         return processed_details
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to scan channel targets: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to scan channel targets: {str(e)}"
+        ) from e
